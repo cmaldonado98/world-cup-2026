@@ -1,0 +1,40 @@
+# =============================================================
+#  AWS Amplify – Build spec para Next.js 15 App Router (SSR)
+#
+#  VARIABLES DE ENTORNO requeridas en Amplify Console:
+#  App Settings → Environment variables → Add variable
+#
+#  Variable                              Valor
+#  ─────────────────────────────────────────────────────────────
+#  NEXT_PUBLIC_SUPABASE_URL              https://xxx.supabase.co
+#  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY  sb_publishable_xxx…
+#  NEXT_PUBLIC_APP_URL                   https://tu-dominio.amplifyapp.com
+#
+#  ¡NUNCA subir .env.local al repositorio!
+#  Las vars NEXT_PUBLIC_* se hornean en el bundle durante `npm run build`.
+# =============================================================
+
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - nvm install          # instala la versión en .nvmrc (Node 20 LTS)
+        - nvm use
+        - node -v              # confirma versión en log de Amplify
+        - npm ci --cache .npm --prefer-offline
+
+    build:
+      commands:
+        - npm run build
+
+  artifacts:
+    # Next.js SSR: Amplify lee .next/ y despliega via Lambda + CloudFront
+    baseDirectory: .next
+    files:
+      - '**/*'
+
+  cache:
+    paths:
+      - .npm/**/*            # caché de paquetes npm entre deploys
+      - .next/cache/**/*     # caché de compilación de Next.js (chunks, ISR, etc.)
