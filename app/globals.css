@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── System font stack (SF Pro on Apple, Segoe UI on Windows, etc.) ── */
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display',
+               'SF Pro Text', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Respect iOS safe area insets */
+  --sat: env(safe-area-inset-top,    0px);
+  --sar: env(safe-area-inset-right,  0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left,   0px);
+}
+
+/* ── Bottom nav height + safe area for main content ── */
+.pb-nav {
+  padding-bottom: calc(68px + var(--sab));
+}
+
+/* ── Hide scrollbar but keep scroll behaviour ── */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ── iOS haptic-style tap feedback ── */
+.tap-scale {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  touch-action: manipulation;
+  transition: transform 0.1s;
+}
+.tap-scale:active { transform: scale(0.94); }
+
+/* ── Bottom-sheet slide-up animation ── */
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.animate-slide-up { animation: slideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1) both; }
+
+/* ── Fade-in for backdrop ── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-fade-in { animation: fadeIn 0.2s ease both; }
+
+/* ── Card badge pulse on first collection ── */
+@keyframes popIn {
+  0%   { transform: scale(0); opacity: 0; }
+  70%  { transform: scale(1.2); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-pop-in { animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* ── iOS-style segmented control ── */
+.segmented-active {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+}
+
+/* Dark mode body background */
+@media (prefers-color-scheme: dark) {
+  body { background-color: #000; }
+}
