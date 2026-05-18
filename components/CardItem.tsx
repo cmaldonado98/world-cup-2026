@@ -21,7 +21,8 @@ interface CardItemProps {
 const CardItem = memo(function CardItem({
   cardId, quantity, onIncrement, onLongPress,
 }: CardItemProps) {
-  const number = cardId.split(' ')[1]; // show only numeric part inside the cell
+  // Extract the numeric part after the team-code letters (e.g. "MEX10" → "10", "FWC" → "Logo")
+  const number = cardId.replace(/^[A-Z]+/, '') || 'Logo';
 
   const handlers = useLongPress(
     () => onLongPress(cardId),

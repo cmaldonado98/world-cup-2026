@@ -1,91 +1,110 @@
 // Official Panini FIFA World Cup 2026 album structure
-// Format: [CODE] [N] — matches Supabase card_id exactly
+// Sticker codes match cods.csv exactly (no-space format: MEX1, ARG20, FWC, etc.)
+// Teams ordered exactly as in cods.csv; every 4 national teams = one group (A–L)
 
 export type Confederation = 'FIFA' | 'CONCACAF' | 'CONMEBOL' | 'UEFA' | 'CAF' | 'AFC' | 'OFC';
 
 export interface Team {
-  code: string;          // e.g. "ARG", "FIFA"
+  code: string;          // e.g. "ARG", "FWC", "CC"
   name: string;          // e.g. "Argentina"
   flag: string;          // emoji
   confederation: Confederation;
-  stickerCount: number;  // stickers in this section
-  stickerStart: number;  // first sticker number (FIFA section starts at 0)
+  stickerCount: number;  // total stickers in this section
+  group: string;         // e.g. "A", "B", "Especiales", "CocaCola"
 }
 
-// 48 national teams + 1 special FIFA intro section
+// ── Album order: FWC → Groups A-L (4 teams each) → CC ─────────────────────────
 export const TEAMS: readonly Team[] = [
-  // ── Special / Intro section ───────────────────────────────
-  { code: 'FIFA', name: 'FIFA World Cup 2026', flag: '🏆', confederation: 'FIFA',     stickerCount: 20, stickerStart: 0 },
+  // ── Especiales ────────────────────────────────────────────
+  // FWC: Logo sticker ("FWC") + FWC1–FWC19 = 20 stickers
+  { code: 'FWC', name: 'FIFA World Cup 2026', flag: '🏆', confederation: 'FIFA',     stickerCount: 20, group: 'Especiales' },
 
-  // ── CONCACAF (hosts + qualifiers) ────────────────────────
-  { code: 'USA', name: 'United States',  flag: '🇺🇸', confederation: 'CONCACAF', stickerCount: 18, stickerStart: 1 },
-  { code: 'CAN', name: 'Canada',         flag: '🇨🇦', confederation: 'CONCACAF', stickerCount: 18, stickerStart: 1 },
-  { code: 'MEX', name: 'Mexico',         flag: '🇲🇽', confederation: 'CONCACAF', stickerCount: 18, stickerStart: 1 },
-  { code: 'PAN', name: 'Panama',         flag: '🇵🇦', confederation: 'CONCACAF', stickerCount: 18, stickerStart: 1 },
-  { code: 'JAM', name: 'Jamaica',        flag: '🇯🇲', confederation: 'CONCACAF', stickerCount: 18, stickerStart: 1 },
-  { code: 'HON', name: 'Honduras',       flag: '🇭🇳', confederation: 'CONCACAF', stickerCount: 18, stickerStart: 1 },
+  // ── Grupo A ───────────────────────────────────────────────
+  { code: 'MEX', name: 'Mexico',         flag: '🇲🇽', confederation: 'CONCACAF', stickerCount: 20, group: 'A' },
+  { code: 'RSA', name: 'South Africa',   flag: '🇿🇦', confederation: 'CAF',      stickerCount: 20, group: 'A' },
+  { code: 'KOR', name: 'South Korea',    flag: '🇰🇷', confederation: 'AFC',      stickerCount: 20, group: 'A' },
+  { code: 'CZE', name: 'Czech Republic', flag: '🇨🇿', confederation: 'UEFA',     stickerCount: 20, group: 'A' },
 
-  // ── CONMEBOL ─────────────────────────────────────────────
-  { code: 'ARG', name: 'Argentina',  flag: '🇦🇷', confederation: 'CONMEBOL', stickerCount: 18, stickerStart: 1 },
-  { code: 'BRA', name: 'Brazil',     flag: '🇧🇷', confederation: 'CONMEBOL', stickerCount: 18, stickerStart: 1 },
-  { code: 'URU', name: 'Uruguay',    flag: '🇺🇾', confederation: 'CONMEBOL', stickerCount: 18, stickerStart: 1 },
-  { code: 'COL', name: 'Colombia',   flag: '🇨🇴', confederation: 'CONMEBOL', stickerCount: 18, stickerStart: 1 },
-  { code: 'ECU', name: 'Ecuador',    flag: '🇪🇨', confederation: 'CONMEBOL', stickerCount: 18, stickerStart: 1 },
-  { code: 'VEN', name: 'Venezuela',  flag: '🇻🇪', confederation: 'CONMEBOL', stickerCount: 18, stickerStart: 1 },
+  // ── Grupo B ───────────────────────────────────────────────
+  { code: 'CAN', name: 'Canada',                   flag: '🇨🇦', confederation: 'CONCACAF', stickerCount: 20, group: 'B' },
+  { code: 'BIH', name: 'Bosnia and Herzegovina',   flag: '🇧🇦', confederation: 'UEFA',     stickerCount: 20, group: 'B' },
+  { code: 'QAT', name: 'Qatar',                    flag: '🇶🇦', confederation: 'AFC',      stickerCount: 20, group: 'B' },
+  { code: 'SUI', name: 'Switzerland',              flag: '🇨🇭', confederation: 'UEFA',     stickerCount: 20, group: 'B' },
 
-  // ── UEFA ─────────────────────────────────────────────────
-  { code: 'FRA', name: 'France',      flag: '🇫🇷', confederation: 'UEFA', stickerCount: 18, stickerStart: 1 },
-  { code: 'ENG', name: 'England',     flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', confederation: 'UEFA', stickerCount: 18, stickerStart: 1 },
-  { code: 'GER', name: 'Germany',     flag: '🇩🇪', confederation: 'UEFA', stickerCount: 18, stickerStart: 1 },
-  { code: 'ESP', name: 'Spain',       flag: '🇪🇸', confederation: 'UEFA', stickerCount: 18, stickerStart: 1 },
-  { code: 'POR', name: 'Portugal',    flag: '🇵🇹', confederation: 'UEFA', stickerCount: 18, stickerStart: 1 },
-  { code: 'NED', name: 'Netherlands', flag: '🇳🇱', confederation: 'UEFA', stickerCount: 18, stickerStart: 1 },
-  { code: 'BEL', name: 'Belgium',     flag: '🇧🇪', confederation: 'UEFA', stickerCount: 18, stickerStart: 1 },
-  { code: 'ITA', name: 'Italy',       flag: '🇮🇹', confederation: 'UEFA', stickerCount: 18, stickerStart: 1 },
-  { code: 'CRO', name: 'Croatia',     flag: '🇭🇷', confederation: 'UEFA', stickerCount: 18, stickerStart: 1 },
-  { code: 'SUI', name: 'Switzerland', flag: '🇨🇭', confederation: 'UEFA', stickerCount: 18, stickerStart: 1 },
-  { code: 'DEN', name: 'Denmark',     flag: '🇩🇰', confederation: 'UEFA', stickerCount: 18, stickerStart: 1 },
-  { code: 'POL', name: 'Poland',      flag: '🇵🇱', confederation: 'UEFA', stickerCount: 18, stickerStart: 1 },
-  { code: 'AUT', name: 'Austria',     flag: '🇦🇹', confederation: 'UEFA', stickerCount: 18, stickerStart: 1 },
-  { code: 'SCO', name: 'Scotland',    flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', confederation: 'UEFA', stickerCount: 18, stickerStart: 1 },
-  { code: 'TUR', name: 'Turkey',      flag: '🇹🇷', confederation: 'UEFA', stickerCount: 18, stickerStart: 1 },
-  { code: 'SRB', name: 'Serbia',      flag: '🇷🇸', confederation: 'UEFA', stickerCount: 18, stickerStart: 1 },
+  // ── Grupo C ───────────────────────────────────────────────
+  { code: 'BRA', name: 'Brazil',      flag: '🇧🇷', confederation: 'CONMEBOL', stickerCount: 20, group: 'C' },
+  { code: 'MAR', name: 'Morocco',     flag: '🇲🇦', confederation: 'CAF',      stickerCount: 20, group: 'C' },
+  { code: 'HAI', name: 'Haiti',       flag: '🇭🇹', confederation: 'CONCACAF', stickerCount: 20, group: 'C' },
+  { code: 'SCO', name: 'Scotland',    flag: '🏴󠁧󠁢󠁳󠁣󠁴󠁿', confederation: 'UEFA',     stickerCount: 20, group: 'C' },
 
-  // ── CAF ──────────────────────────────────────────────────
-  { code: 'MAR', name: 'Morocco',      flag: '🇲🇦', confederation: 'CAF', stickerCount: 18, stickerStart: 1 },
-  { code: 'SEN', name: 'Senegal',      flag: '🇸🇳', confederation: 'CAF', stickerCount: 18, stickerStart: 1 },
-  { code: 'EGY', name: 'Egypt',        flag: '🇪🇬', confederation: 'CAF', stickerCount: 18, stickerStart: 1 },
-  { code: 'NGA', name: 'Nigeria',      flag: '🇳🇬', confederation: 'CAF', stickerCount: 18, stickerStart: 1 },
-  { code: 'CMR', name: 'Cameroon',     flag: '🇨🇲', confederation: 'CAF', stickerCount: 18, stickerStart: 1 },
-  { code: 'ALG', name: 'Algeria',      flag: '🇩🇿', confederation: 'CAF', stickerCount: 18, stickerStart: 1 },
-  { code: 'TUN', name: 'Tunisia',      flag: '🇹🇳', confederation: 'CAF', stickerCount: 18, stickerStart: 1 },
-  { code: 'GHA', name: 'Ghana',        flag: '🇬🇭', confederation: 'CAF', stickerCount: 18, stickerStart: 1 },
-  { code: 'CIV', name: 'Ivory Coast',  flag: '🇨🇮', confederation: 'CAF', stickerCount: 18, stickerStart: 1 },
+  // ── Grupo D ───────────────────────────────────────────────
+  { code: 'USA', name: 'United States', flag: '🇺🇸', confederation: 'CONCACAF', stickerCount: 20, group: 'D' },
+  { code: 'PAR', name: 'Paraguay',      flag: '🇵🇾', confederation: 'CONMEBOL', stickerCount: 20, group: 'D' },
+  { code: 'AUS', name: 'Australia',     flag: '🇦🇺', confederation: 'AFC',      stickerCount: 20, group: 'D' },
+  { code: 'TUR', name: 'Turkey',        flag: '🇹🇷', confederation: 'UEFA',     stickerCount: 20, group: 'D' },
 
-  // ── AFC ──────────────────────────────────────────────────
-  { code: 'JPN', name: 'Japan',        flag: '🇯🇵', confederation: 'AFC', stickerCount: 18, stickerStart: 1 },
-  { code: 'KOR', name: 'South Korea',  flag: '🇰🇷', confederation: 'AFC', stickerCount: 18, stickerStart: 1 },
-  { code: 'AUS', name: 'Australia',    flag: '🇦🇺', confederation: 'AFC', stickerCount: 18, stickerStart: 1 },
-  { code: 'IRN', name: 'Iran',         flag: '🇮🇷', confederation: 'AFC', stickerCount: 18, stickerStart: 1 },
-  { code: 'KSA', name: 'Saudi Arabia', flag: '🇸🇦', confederation: 'AFC', stickerCount: 18, stickerStart: 1 },
-  { code: 'IRQ', name: 'Iraq',         flag: '🇮🇶', confederation: 'AFC', stickerCount: 18, stickerStart: 1 },
-  { code: 'JOR', name: 'Jordan',       flag: '🇯🇴', confederation: 'AFC', stickerCount: 18, stickerStart: 1 },
-  { code: 'UZB', name: 'Uzbekistan',   flag: '🇺🇿', confederation: 'AFC', stickerCount: 18, stickerStart: 1 },
+  // ── Grupo E ───────────────────────────────────────────────
+  { code: 'GER', name: 'Germany',     flag: '🇩🇪', confederation: 'UEFA',     stickerCount: 20, group: 'E' },
+  { code: 'CUW', name: 'Curaçao',     flag: '🇨🇼', confederation: 'CONCACAF', stickerCount: 20, group: 'E' },
+  { code: 'CIV', name: 'Ivory Coast', flag: '🇨🇮', confederation: 'CAF',      stickerCount: 20, group: 'E' },
+  { code: 'ECU', name: 'Ecuador',     flag: '🇪🇨', confederation: 'CONMEBOL', stickerCount: 20, group: 'E' },
 
-  // ── OFC ──────────────────────────────────────────────────
-  { code: 'NZL', name: 'New Zealand',  flag: '🇳🇿', confederation: 'OFC', stickerCount: 18, stickerStart: 1 },
+  // ── Grupo F ───────────────────────────────────────────────
+  { code: 'NED', name: 'Netherlands', flag: '🇳🇱', confederation: 'UEFA', stickerCount: 20, group: 'F' },
+  { code: 'JPN', name: 'Japan',       flag: '🇯🇵', confederation: 'AFC',  stickerCount: 20, group: 'F' },
+  { code: 'SWE', name: 'Sweden',      flag: '🇸🇪', confederation: 'UEFA', stickerCount: 20, group: 'F' },
+  { code: 'TUN', name: 'Tunisia',     flag: '🇹🇳', confederation: 'CAF',  stickerCount: 20, group: 'F' },
 
-  // ── Intercontinental playoff winners ─────────────────────
-  { code: 'IDN', name: 'Indonesia',    flag: '🇮🇩', confederation: 'AFC', stickerCount: 18, stickerStart: 1 },
-  { code: 'KAZ', name: 'Kazakhstan',   flag: '🇰🇿', confederation: 'UEFA', stickerCount: 18, stickerStart: 1 },
+  // ── Grupo G ───────────────────────────────────────────────
+  { code: 'BEL', name: 'Belgium',     flag: '🇧🇪', confederation: 'UEFA', stickerCount: 20, group: 'G' },
+  { code: 'EGY', name: 'Egypt',       flag: '🇪🇬', confederation: 'CAF',  stickerCount: 20, group: 'G' },
+  { code: 'IRN', name: 'Iran',        flag: '🇮🇷', confederation: 'AFC',  stickerCount: 20, group: 'G' },
+  { code: 'NZL', name: 'New Zealand', flag: '🇳🇿', confederation: 'OFC',  stickerCount: 20, group: 'G' },
+
+  // ── Grupo H ───────────────────────────────────────────────
+  { code: 'ESP', name: 'Spain',         flag: '🇪🇸', confederation: 'UEFA', stickerCount: 20, group: 'H' },
+  { code: 'CPV', name: 'Cape Verde',    flag: '🇨🇻', confederation: 'CAF',  stickerCount: 20, group: 'H' },
+  { code: 'KSA', name: 'Saudi Arabia',  flag: '🇸🇦', confederation: 'AFC',  stickerCount: 20, group: 'H' },
+  { code: 'URU', name: 'Uruguay',       flag: '🇺🇾', confederation: 'CONMEBOL', stickerCount: 20, group: 'H' },
+
+  // ── Grupo I ───────────────────────────────────────────────
+  { code: 'FRA', name: 'France',   flag: '🇫🇷', confederation: 'UEFA', stickerCount: 20, group: 'I' },
+  { code: 'SEN', name: 'Senegal',  flag: '🇸🇳', confederation: 'CAF',  stickerCount: 20, group: 'I' },
+  { code: 'IRQ', name: 'Iraq',     flag: '🇮🇶', confederation: 'AFC',  stickerCount: 20, group: 'I' },
+  { code: 'NOR', name: 'Norway',   flag: '🇳🇴', confederation: 'UEFA', stickerCount: 20, group: 'I' },
+
+  // ── Grupo J ───────────────────────────────────────────────
+  { code: 'ARG', name: 'Argentina', flag: '🇦🇷', confederation: 'CONMEBOL', stickerCount: 20, group: 'J' },
+  { code: 'ALG', name: 'Algeria',   flag: '🇩🇿', confederation: 'CAF',      stickerCount: 20, group: 'J' },
+  { code: 'AUT', name: 'Austria',   flag: '🇦🇹', confederation: 'UEFA',     stickerCount: 20, group: 'J' },
+  { code: 'JOR', name: 'Jordan',    flag: '🇯🇴', confederation: 'AFC',      stickerCount: 20, group: 'J' },
+
+  // ── Grupo K ───────────────────────────────────────────────
+  { code: 'POR', name: 'Portugal',   flag: '🇵🇹', confederation: 'UEFA',     stickerCount: 20, group: 'K' },
+  { code: 'COD', name: 'DR Congo',   flag: '🇨🇩', confederation: 'CAF',      stickerCount: 20, group: 'K' },
+  { code: 'UZB', name: 'Uzbekistan', flag: '🇺🇿', confederation: 'AFC',      stickerCount: 20, group: 'K' },
+  { code: 'COL', name: 'Colombia',   flag: '🇨🇴', confederation: 'CONMEBOL', stickerCount: 20, group: 'K' },
+
+  // ── Grupo L ───────────────────────────────────────────────
+  { code: 'ENG', name: 'England', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', confederation: 'UEFA',     stickerCount: 20, group: 'L' },
+  { code: 'CRO', name: 'Croatia', flag: '🇭🇷', confederation: 'UEFA',     stickerCount: 20, group: 'L' },
+  { code: 'GHA', name: 'Ghana',   flag: '🇬🇭', confederation: 'CAF',      stickerCount: 20, group: 'L' },
+  { code: 'PAN', name: 'Panama',  flag: '🇵🇦', confederation: 'CONCACAF', stickerCount: 20, group: 'L' },
+
+  // ── CocaCola ──────────────────────────────────────────────
+  { code: 'CC', name: 'Coca-Cola Cup', flag: '🥤', confederation: 'FIFA', stickerCount: 14, group: 'CocaCola' },
 ] as const;
 
-/** All sticker IDs for a team, e.g. ["ARG 1", "ARG 2", …, "ARG 18"] */
+/**
+ * All sticker IDs for a section.
+ * FWC is special: first sticker is "FWC" (logo), then FWC1–FWC19.
+ * All other sections: CODE1–CODE{stickerCount}.
+ */
 export function getTeamStickers(team: Team): string[] {
-  return Array.from(
-    { length: team.stickerCount },
-    (_, i) => `${team.code} ${team.stickerStart + i}`
-  );
+  if (team.code === 'FWC') {
+    return ['FWC', ...Array.from({ length: 19 }, (_, i) => `FWC${i + 1}`)];
+  }
+  return Array.from({ length: team.stickerCount }, (_, i) => `${team.code}${i + 1}`);
 }
 
 /** Flat list of every sticker ID in the album */
@@ -95,7 +114,15 @@ export function getAllStickers(): string[] {
 
 /** Total sticker count across the entire album */
 export const TOTAL_STICKERS = TEAMS.reduce((s, t) => s + t.stickerCount, 0);
-// 20 (FIFA) + 48 × 18 = 884 stickers
+// 20 (FWC) + 48 × 20 + 14 (CC) = 994 stickers
 
 /** O(1) lookup: code → Team */
 export const TEAM_MAP: ReadonlyMap<string, Team> = new Map(TEAMS.map(t => [t.code, t]));
+
+/** Group names in album order (Set preserves insertion order) */
+export const GROUP_NAMES: readonly string[] = [...new Set(TEAMS.map(t => t.group))];
+
+/** Map: group name → teams in album order */
+export const GROUPS: ReadonlyMap<string, readonly Team[]> = new Map(
+  GROUP_NAMES.map(g => [g, TEAMS.filter(t => t.group === g)])
+);

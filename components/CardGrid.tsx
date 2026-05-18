@@ -80,13 +80,37 @@ const CountrySection = memo(function CountrySection({
 
 // ── Main grid ──────────────────────────────────────────────────────────────────
 
-import { TEAMS } from '@/lib/data/teams';
+import { TEAMS, GROUPS } from '@/lib/data/teams';
 
 interface CardGridProps {
   cardMap:     CardMap;
   filter:      string;  // search text – numeric substring filter
   onIncrement: (id: string) => void;
   onLongPress: (id: string) => void;
+}
+
+// Group label colours (cycles through A–L; Especiales and CocaCola get fixed colours)
+const GROUP_COLORS: Record<string, string> = {
+  'Especiales': 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-400/30',
+  'CocaCola':   'bg-red-500/15   text-red-700   dark:text-red-400   border-red-400/30',
+  'A': 'bg-blue-500/15   text-blue-700   dark:text-blue-400   border-blue-400/30',
+  'B': 'bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-400/30',
+  'C': 'bg-green-500/15  text-green-700  dark:text-green-400  border-green-400/30',
+  'D': 'bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-400/30',
+  'E': 'bg-pink-500/15   text-pink-700   dark:text-pink-400   border-pink-400/30',
+  'F': 'bg-cyan-500/15   text-cyan-700   dark:text-cyan-400   border-cyan-400/30',
+  'G': 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 border-indigo-400/30',
+  'H': 'bg-teal-500/15   text-teal-700   dark:text-teal-400   border-teal-400/30',
+  'I': 'bg-rose-500/15   text-rose-700   dark:text-rose-400   border-rose-400/30',
+  'J': 'bg-lime-500/15   text-lime-700   dark:text-lime-400   border-lime-400/30',
+  'K': 'bg-sky-500/15    text-sky-700    dark:text-sky-400    border-sky-400/30',
+  'L': 'bg-violet-500/15 text-violet-700 dark:text-violet-400 border-violet-400/30',
+};
+
+function groupLabel(name: string) {
+  if (name === 'Especiales') return '✦ Especiales';
+  if (name === 'CocaCola')   return '🥤 Coca-Cola';
+  return `Grupo ${name}`;
 }
 
 export function CardGrid({ cardMap, filter, onIncrement, onLongPress }: CardGridProps) {
@@ -96,7 +120,7 @@ export function CardGrid({ cardMap, filter, onIncrement, onLongPress }: CardGrid
     const matches: string[] = [];
     for (const team of TEAMS) {
       for (const id of getTeamStickers(team)) {
-        if (id.split(' ')[1] === needle || id.toLowerCase().includes(needle.toLowerCase())) {
+        if (id.replace(/^[A-Z]+/, '') === needle || id.toLowerCase().includes(needle.toLowerCase())) {
           matches.push(id);
         }
       }
@@ -123,17 +147,34 @@ export function CardGrid({ cardMap, filter, onIncrement, onLongPress }: CardGrid
     );
   }
 
+  // Render by groups with a header banner before each group
   return (
     <>
-      {TEAMS.map(team => (
-        <CountrySection
-          key={team.code}
-          team={team}
-          cardMap={cardMap}
-          onIncrement={onIncrement}
-          onLongPress={onLongPress}
-        />
-      ))}
+      {Array.from(GROUPS).map(([groupName, groupTeams]) => {
+        const colorCls = GROUP_COLORS[groupName] ?? 'bg-gray-200/40 text-gray-600 border-gray-300/30';
+        return (
+          <div key={groupName}>
+            {/* Group header banner */}
+            <div
+              id={`group-${groupName}`}
+              className={`mx-3 mt-4 mb-1 px-4 py-1.5 rounded-xl border text-xs font-black
+                          uppercase tracking-widest ${colorCls}`}
+            >
+              {groupLabel(groupName)}
+            </div>
+
+            {groupTeams.map(team => (
+              <CountrySection
+                key={team.code}
+                team={team}
+                cardMap={cardMap}
+                onIncrement={onIncrement}
+                onLongPress={onLongPress}
+              />
+            ))}
+          </div>
+        );
+      })}
     </>
   );
 }
