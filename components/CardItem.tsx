@@ -63,7 +63,7 @@ const CardItem = memo(function CardItem({
                      flex items-center justify-center px-1 animate-pop-in
                      ring-2 ring-white dark:ring-black"
         >
-          {quantity}
+          {quantity - 1}
         </span>
       )}
     </button>

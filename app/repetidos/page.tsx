@@ -84,7 +84,7 @@ export default function RepetidosPage() {
                           className="bg-[#FF9500]/15 text-[#FF9500] text-xs font-bold
                                      rounded-lg px-2.5 py-1.5"
                         >
-                          {id} (×{qty})
+                          {id} (×{qty - 1})
                         </span>
                       );
                     })}
