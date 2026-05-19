@@ -13,13 +13,16 @@ export const metadata: Metadata = {
     title:        'Álbum 2026',
   },
   icons: {
-    apple: '/icons/apple-touch-icon.png',
+    icon:  '/images/logo.jpg',
+    apple: '/images/logo.jpg',
   },
 };
 
 export const viewport: Viewport = {
   width:           'device-width',
   initialScale:    1,
+  maximumScale:    1,
+  userScalable:    false,
   viewportFit:     'cover', // required for env(safe-area-inset-*)
   themeColor:      [
     { media: '(prefers-color-scheme: light)', color: '#ffffff' },

@@ -17,23 +17,50 @@ export default function QRScanner({ onScan, onError }: QRScannerProps) {
   useEffect(() => {
     let stopped = false;
 
+    const stopScanner = () => {
+      try {
+        if (scannerRef.current && scannerRef.current.isScanning) {
+          scannerRef.current.stop().catch(() => {});
+        }
+      } catch (err) {
+        // En algunas versiones, stop() lanza un error síncrono si no está escaneando
+        console.warn('Scanner stop error ignored', err);
+      }
+    };
+
     async function start() {
       const { Html5Qrcode } = await import('html5-qrcode');
       if (stopped) return;
 
       scannerRef.current = new Html5Qrcode(divId);
+      
+      const config = { fps: 12, qrbox: { width: 240, height: 240 } };
+      const onSuccess = (decoded: string) => {
+        stopScanner();
+        onScan(decoded);
+      };
+
       try {
+        // Intenta primero con la cámara trasera
         await scannerRef.current.start(
           { facingMode: 'environment' },
-          { fps: 12, qrbox: { width: 240, height: 240 } },
-          (decoded) => {
-            onScan(decoded);
-            scannerRef.current?.stop().catch(() => {});
-          },
+          config,
+          onSuccess,
           undefined
         );
-      } catch (e) {
-        onError?.((e as Error).message ?? 'Camera error');
+      } catch (e1) {
+        // Si falla (ej: MacBooks solo tienen cámara frontal), intenta cualquier cámara disponible
+        try {
+          if (stopped) return;
+          await scannerRef.current.start(
+            { facingMode: 'user' },
+            config,
+            onSuccess,
+            undefined
+          );
+        } catch (e2) {
+          onError?.((e2 as Error).message ?? 'Camera error');
+        }
       }
     }
 
@@ -41,7 +68,7 @@ export default function QRScanner({ onScan, onError }: QRScannerProps) {
 
     return () => {
       stopped = true;
-      scannerRef.current?.stop().catch(() => {});
+      stopScanner();
     };
   }, [onScan, onError]);
 

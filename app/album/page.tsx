@@ -33,7 +33,7 @@ export default function AlbumPage() {
               placeholder="Buscar número…"
               value={filter}
               onChange={e => setFilter(e.target.value)}
-              className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white
+              className="flex-1 bg-transparent text-[16px] text-gray-900 dark:text-white
                          placeholder:text-ios-gray4 outline-none"
             />
             {filter && (

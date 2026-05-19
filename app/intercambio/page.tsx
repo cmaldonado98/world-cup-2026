@@ -3,11 +3,11 @@
 import { useCallback, useState } from 'react';
 import dynamic   from 'next/dynamic';
 import { QRCodeSVG  } from 'qrcode.react';
-import { ScanLine, QrCode, ArrowLeft, Loader2 } from 'lucide-react';
+import { ScanLine, QrCode, ArrowLeft, Loader2, Share } from 'lucide-react';
 import { useAlbum   } from '@/contexts/AlbumContext';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import type { CardMap } from '@/contexts/AlbumContext';
-import { getAllStickers } from '@/lib/data/teams';
+import { getAllStickers, TEAMS, GROUPS } from '@/lib/data/teams';
 
 // Load scanner only on the client – html5-qrcode touches window/navigator
 const QRScanner = dynamic(() => import('@/components/QRScanner'), { ssr: false });
@@ -80,7 +80,96 @@ export default function IntercambioPage() {
     setMatch({ theirId, iCanGive, theyGive });
   }, [cardMap]);
 
+  const shareOrCopy = async (title: string, text: string) => {
+    if (navigator.share) {
+      try { 
+        await navigator.share({ title, text }); 
+        return;
+      } catch (e: any) { 
+        if (e.name === 'AbortError') return; // Usuario canceló explícitamente el native share
+      }
+    }
+    
+    // Fallback: Clipboard API moderna (requiere HTTPS o localhost)
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        alert('Copiado al portapapeles');
+        return;
+      } catch (e) {}
+    }
 
+    // Fallback absoluto: Hack de TextArea
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      const success = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      if (success) alert('Copiado al portapapeles');
+      else alert('No se pudo copiar el texto');
+    } catch (e) {
+      alert('Tu navegador no soporta auto-copiar.');
+    }
+  };
+
+  const formatStickersMessage = (header: string, stickerIds: string[]): string => {
+    if (stickerIds.length === 0) return `${header}\n\n¡No hay cromos aquí!`;
+
+    // Map sticker IDs by Team Code
+    const idsByTeam: Record<string, string[]> = {};
+    for (const id of stickerIds) {
+      const code = id.match(/^[A-Z]+/)?.[0] || 'FWC';
+      if (!idsByTeam[code]) idsByTeam[code] = [];
+      idsByTeam[code].push(id);
+    }
+
+    let msg = `==================\n${header}\n==================\n\n`;
+
+    for (const [groupName, groupTeams] of Array.from(GROUPS.entries())) {
+      // Check if group has any matching stickers
+      const hasStickers = groupTeams.some(team => idsByTeam[team.code]?.length > 0);
+      if (!hasStickers) continue;
+
+      const groupTitle = 
+        groupName === 'Especiales' ? '✦ Especiales ✦' : 
+        groupName === 'CocaCola'   ? '🥤 Coca-Cola 🥤' : 
+        `🏆 Grupo ${groupName}`;
+
+      msg += `${groupTitle}\n`;
+      msg += `------------------------\n`;
+
+      for (const team of groupTeams) {
+        const ids = idsByTeam[team.code];
+        if (ids && ids.length > 0) {
+          // Extrae solo el número (ej: "MEX 10" -> "10")
+          const numbers = ids.map(id => id.replace(/^[A-Z]+/, '') || 'Logo');
+          msg += `${team.flag} ${team.name}:\n  ${numbers.join(', ')}\n`;
+        }
+      }
+      msg += `\n`;
+    }
+
+    return msg.trim();
+  };
+
+  const handleShareMissing = () => {
+    const all = getAllStickers();
+    const missing = all.filter(id => (cardMap[id] ?? 0) === 0);
+    const text = formatStickersMessage('Me Faltan (Álbum Mundial 2026)', missing);
+    shareOrCopy('Mis Faltantes', text);
+  };
+
+  const handleShareRepeated = () => {
+    const all = getAllStickers();
+    const repeated = all.filter(id => (cardMap[id] ?? 0) > 1);
+    const text = formatStickersMessage('Tengo Repetidas (Álbum Mundial 2026)', repeated);
+    shareOrCopy('Mis Repetidas', text);
+  };
 
   return (
     <div className="min-h-screen bg-ios-gray6 dark:bg-black">
@@ -115,11 +204,33 @@ export default function IntercambioPage() {
           <button
             onClick={() => setPhase('scanning')}
             className="flex items-center gap-2 bg-ios-blue text-white font-semibold
-                       text-sm px-8 py-3.5 rounded-2xl tap-scale shadow-ios-card"
+                       text-sm px-8 py-3.5 rounded-2xl tap-scale shadow-ios-card min-w-[280px] justify-center"
           >
             <ScanLine size={18} />
             Escanear álbum de un amigo
           </button>
+
+          {/* Share buttons */}
+          <div className="flex gap-3 w-full max-w-[280px]">
+            <button
+              onClick={handleShareMissing}
+              className="flex-1 flex flex-col items-center gap-1.5 bg-white dark:bg-[#1C1C1E]
+                         text-gray-900 dark:text-white text-xs font-semibold
+                         px-4 py-3 rounded-2xl tap-scale shadow-ios-card"
+            >
+              <Share size={16} className="text-ios-blue" />
+              Compartir<br/>Faltantes
+            </button>
+            <button
+              onClick={handleShareRepeated}
+              className="flex-1 flex flex-col items-center gap-1.5 bg-white dark:bg-[#1C1C1E]
+                         text-gray-900 dark:text-white text-xs font-semibold
+                         px-4 py-3 rounded-2xl tap-scale shadow-ios-card"
+            >
+              <Share size={16} className="text-ios-blue" />
+              Compartir<br/>Repetidas
+            </button>
+          </div>
         </div>
       )}
 

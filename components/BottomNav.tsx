@@ -3,13 +3,14 @@
 // Fixed iOS-style bottom tab bar with frosted glass backdrop
 import Link      from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutGrid, Layers, ArrowLeftRight, Home } from 'lucide-react';
+import { LayoutGrid, Layers, ArrowLeftRight, Home, User } from 'lucide-react';
 
 const TABS = [
   { href: '/',            label: 'Inicio',      Icon: Home          },
   { href: '/album',       label: 'Mi Álbum',    Icon: LayoutGrid    },
   { href: '/repetidos',   label: 'Repetidas',   Icon: Layers        },
   { href: '/intercambio', label: 'Intercambio', Icon: ArrowLeftRight },
+  { href: '/perfil',      label: 'Perfil',      Icon: User          },
 ] as const;
 
 export function BottomNav() {

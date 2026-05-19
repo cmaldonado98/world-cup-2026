@@ -117,7 +117,7 @@ export function LoginScreen() {
               placeholder="tu@email.com"
               value={email}
               onChange={e => { setEmail(e.target.value); setError(''); }}
-              className="flex-1 bg-transparent text-sm text-gray-900 dark:text-white
+              className="flex-1 bg-transparent text-[16px] text-gray-900 dark:text-white
                          placeholder:text-ios-gray4 outline-none"
             />
           </label>
@@ -162,7 +162,7 @@ export function LoginScreen() {
             value={pin}
             onChange={handlePinChange}
             // Invisible but accessible and focusable
-            className="absolute opacity-0 w-px h-px pointer-events-none"
+            className="absolute opacity-0 w-px h-px pointer-events-none text-[16px]"
             tabIndex={0}
             aria-label="PIN de 4 dígitos"
           />

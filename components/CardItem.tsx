@@ -8,6 +8,7 @@ interface CardItemProps {
   quantity:    number;
   onIncrement: (id: string) => void;
   onLongPress: (id: string) => void;
+  showTeamCode?: boolean; // If true, displays team code above number
 }
 
 /**
@@ -19,10 +20,11 @@ interface CardItemProps {
  *  quantity  > 1 → green  (tengo) + orange badge with count
  */
 const CardItem = memo(function CardItem({
-  cardId, quantity, onIncrement, onLongPress,
+  cardId, quantity, onIncrement, onLongPress, showTeamCode
 }: CardItemProps) {
-  // Extract the numeric part after the team-code letters (e.g. "MEX10" → "10", "FWC" → "Logo")
+  // Extract the numeric part and team code
   const number = cardId.replace(/^[A-Z]+/, '') || 'Logo';
+  const teamCode = cardId.match(/^[A-Z]+/)?.[0] || '';
 
   const handlers = useLongPress(
     () => onLongPress(cardId),
@@ -40,7 +42,7 @@ const CardItem = memo(function CardItem({
       {...handlers}
       aria-label={`Cromo ${cardId}${owned ? `, cantidad: ${quantity}` : ', falta'}`}
       className={[
-        'relative flex items-center justify-center rounded-xl',
+        'relative flex flex-col items-center justify-center rounded-xl',
         'h-11 w-full text-sm font-semibold select-none',
         'tap-scale outline-none focus-visible:ring-2 focus-visible:ring-ios-blue',
         owned
@@ -48,7 +50,10 @@ const CardItem = memo(function CardItem({
           : 'bg-ios-gray5 dark:bg-[#2C2C2E] text-ios-gray dark:text-ios-gray2',
       ].join(' ')}
     >
-      {number}
+      {showTeamCode && (
+        <span className="text-[10px] leading-tight opacity-75 mt-0.5">{teamCode}</span>
+      )}
+      <span className={showTeamCode ? "leading-tight mb-0.5" : ""}>{number}</span>
 
       {/* Orange badge for repeated stickers */}
       {hasExtra && (

@@ -140,6 +140,7 @@ export function CardGrid({ cardMap, filter, onIncrement, onLongPress }: CardGrid
               quantity={cardMap[id] ?? 0}
               onIncrement={onIncrement}
               onLongPress={onLongPress}
+              showTeamCode={true}
             />
           ))
         )}
