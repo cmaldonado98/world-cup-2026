@@ -109,12 +109,14 @@ const CountrySection = memo(function CountrySection({
 import { TEAMS, GROUPS } from '@/lib/data/teams';
 
 interface CardGridProps {
-  cardMap:      CardMap;
-  filter:       string;        // text search
-  statusFilter: StatusFilter;  // owned-state chip filter
-  headerHeight: number;        // px height of the album page sticky bar
-  onIncrement:  (id: string) => void;
-  onLongPress:  (id: string) => void;
+  cardMap:            CardMap;
+  filter:             string;               // raw search text
+  statusFilter:       StatusFilter;         // owned-state chip filter
+  headerHeight:       number;               // px height of the album page sticky bar
+  /** Non-null = Fuse.js result; null = show all or sticker-number list */
+  filteredTeamCodes?: Set<string> | null;
+  onIncrement:        (id: string) => void;
+  onLongPress:        (id: string) => void;
 }
 
 // Group label colours (cycles through A–L; Especiales and CocaCola get fixed colours)
@@ -141,8 +143,55 @@ function groupLabel(name: string) {
   return `Grupo ${name}`;
 }
 
-export function CardGrid({ cardMap, filter, statusFilter, headerHeight, onIncrement, onLongPress }: CardGridProps) {
-  // When a text filter is active, show a flat list of matching sticker IDs
+export function CardGrid({
+  cardMap, filter, statusFilter, headerHeight, filteredTeamCodes,
+  onIncrement, onLongPress,
+}: CardGridProps) {
+
+  // ── Branch 1: Fuse.js team-name search result ──────────────────────────────
+  if (filteredTeamCodes != null) {
+    if (filteredTeamCodes.size === 0) {
+      return (
+        <p className="text-center text-ios-gray py-16 text-sm px-8">
+          No se encontró ningún país para &ldquo;{filter}&rdquo;
+        </p>
+      );
+    }
+
+    return (
+      <>
+        {Array.from(GROUPS).map(([groupName, groupTeams]) => {
+          const matchingTeams = groupTeams.filter(t => filteredTeamCodes.has(t.code));
+          if (matchingTeams.length === 0) return null;
+          const colorCls = GROUP_COLORS[groupName] ?? 'bg-gray-200/40 text-gray-600 border-gray-300/30';
+          return (
+            <div key={groupName}>
+              <div
+                id={`group-${groupName}`}
+                className={`mx-3 mt-4 mb-1 px-4 py-1.5 rounded-xl border text-xs font-black
+                            uppercase tracking-widest ${colorCls}`}
+              >
+                {groupLabel(groupName)}
+              </div>
+              {matchingTeams.map(team => (
+                <CountrySection
+                  key={team.code}
+                  team={team}
+                  cardMap={cardMap}
+                  onIncrement={onIncrement}
+                  onLongPress={onLongPress}
+                  statusFilter={statusFilter}
+                  headerHeight={headerHeight}
+                />
+              ))}
+            </div>
+          );
+        })}
+      </>
+    );
+  }
+
+  // ── Branch 2: Sticker-number flat search ──────────────────────────────────
   if (filter.trim()) {
     const needle = filter.trim();
     const matches: string[] = [];
@@ -154,7 +203,6 @@ export function CardGrid({ cardMap, filter, statusFilter, headerHeight, onIncrem
       }
     }
 
-    // Apply status filter on top of text search
     const filtered =
       statusFilter === 'missing'    ? matches.filter(id => !(cardMap[id])) :
       statusFilter === 'duplicates' ? matches.filter(id => (cardMap[id] ?? 0) > 1) :
@@ -182,7 +230,7 @@ export function CardGrid({ cardMap, filter, statusFilter, headerHeight, onIncrem
     );
   }
 
-  // Render by groups with a header banner before each group
+  // ── Branch 3: Full grouped view ──────────────────────────────────────────
   return (
     <>
       {Array.from(GROUPS).map(([groupName, groupTeams]) => {

@@ -11,6 +11,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.0",
+    "fuse.js": "^7.3.0",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.468.0",
     "next": "^15.1.0",

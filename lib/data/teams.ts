@@ -126,3 +126,31 @@ export const GROUP_NAMES: readonly string[] = [...new Set(TEAMS.map(t => t.group
 export const GROUPS: ReadonlyMap<string, readonly Team[]> = new Map(
   GROUP_NAMES.map(g => [g, TEAMS.filter(t => t.group === g)])
 );
+
+// ── Search index ──────────────────────────────────────────────────────────────
+
+/** Enriched document used by Fuse.js — built from static TEAMS data. */
+export interface TeamSearchDoc {
+  code:        string; // e.g. "ARG"
+  name:        string; // e.g. "Argentina"
+  searchTerms: string; // concatenated: name + code + group label + confederation
+}
+
+/**
+ * Pre-built search documents.
+ * `searchTerms` contains every natural-language token a user might type:
+ *  - Country name (English)
+ *  - 3-letter code
+ *  - Group label ("Grupo A", "Especiales", "CocaCola")
+ *  - Confederation acronym (UEFA, CONMEBOL, …)
+ */
+export const TEAM_SEARCH_DOCS: TeamSearchDoc[] = (TEAMS as readonly Team[]).map(t => ({
+  code: t.code,
+  name: t.name,
+  searchTerms: [
+    t.name,
+    t.code,
+    t.group.length === 1 ? `Grupo ${t.group}` : t.group,
+    t.confederation,
+  ].join(' '),
+}));

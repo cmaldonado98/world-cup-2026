@@ -3,14 +3,17 @@
 // Horizontal pill-scroller for quick country navigation, grouped by match group
 import { useRef, useMemo } from 'react';
 import type { Team } from '@/lib/data/teams';
+import { groupChipToSearchTerm } from '@/lib/hooks/useTeamSearch';
 
 interface CountrySelectorProps {
-  teams:    readonly Team[];
-  active:   string;          // currently highlighted team code
-  onSelect: (code: string) => void;
+  teams:          readonly Team[];
+  active:         string;                        // currently highlighted team code
+  onSelect:       (code: string) => void;
+  /** Called when a group label chip is pressed — sets the search input text. */
+  onGroupFilter?: (term: string) => void;
 }
 
-export function CountrySelector({ teams, active, onSelect }: CountrySelectorProps) {
+export function CountrySelector({ teams, active, onSelect, onGroupFilter }: CountrySelectorProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Derive ordered groups from teams (Set preserves insertion order)
@@ -41,9 +44,16 @@ export function CountrySelector({ teams, active, onSelect }: CountrySelectorProp
     >
       {Array.from(groups).map(([groupName, groupTeams]) => (
         <div key={groupName} className="flex items-center gap-1.5 flex-shrink-0">
-          {/* Group label — clickable, jumps to first team in group */}
+          {/* Group label — if onGroupFilter is provided, clicking filters by group;
+               otherwise falls back to scrolling to the first team in the group */}
           <button
-            onClick={() => handleGroupClick(groupTeams[0].code)}
+            onClick={() => {
+              if (onGroupFilter) {
+                onGroupFilter(groupChipToSearchTerm(groupName));
+              } else {
+                handleGroupClick(groupTeams[0].code);
+              }
+            }}
             className={[
               'flex-shrink-0 px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wide tap-scale',
               'transition-colors duration-150',
