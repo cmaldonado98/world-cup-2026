@@ -8,10 +8,11 @@ import React, {
   useMemo,
   useReducer,
   useRef,
+  useState,
 } from 'react';
 import type { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { getSupabaseClient } from '@/lib/supabase/client';
-import { TOTAL_STICKERS } from '@/lib/data/teams';
+import { TOTAL_STICKERS, TEAMS, getTeamStickers } from '@/lib/data/teams';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -30,19 +31,44 @@ type Action =
   | { type: 'SET_LOADING'; loading: boolean }
   | { type: 'UPDATE_CARD'; cardId:  string; quantity: number };
 
+export interface GroupProgressItem {
+  code:       string;
+  name:       string;
+  flag:       string;
+  group:      string;
+  owned:      number;
+  total:      number;
+  percentage: number;
+}
+
 export interface AlbumContextValue {
   cardMap:       CardMap;
   user:          User | null;
   loading:       boolean;
+  todayAdded:    number;
   incrementCard: (cardId: string) => void;
   decrementCard: (cardId: string) => void;
   removeCard:    (cardId: string) => void;
   stats: {
-    owned:      number;
-    missing:    number;
-    duplicates: number;
-    total:      number;
-    percentage: number;
+    owned:              number;
+    missing:            number;
+    duplicates:         number;
+    total:              number;
+    percentage:         number;
+    // Trade power
+    tradeableCount:     number;
+    tradePower:         number;
+    // Specials vs normals
+    specialsOwned:      number;
+    specialsTotal:      number;
+    specialsPercentage: number;
+    normalsOwned:       number;
+    normalsTotal:       number;
+    normalsPercentage:  number;
+    // Curiosity
+    mostDuplicated:     { cardId: string; count: number } | null;
+    // Per-team progress sorted by % desc
+    groupProgress:      GroupProgressItem[];
   };
 }
 
@@ -73,6 +99,12 @@ function reducer(state: AlbumState, action: Action): AlbumState {
 const AlbumContext = createContext<AlbumContextValue | null>(null);
 const LS_KEY = 'wc2026_cards';
 
+// Pre-compute specials sticker IDs once (stable across renders)
+const SPECIAL_GROUPS = new Set(['Especiales', 'CocaCola']);
+const SPECIAL_STICKER_IDS = new Set(
+  TEAMS.filter(t => SPECIAL_GROUPS.has(t.group)).flatMap(getTeamStickers)
+);
+
 export function AlbumProvider({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => getSupabaseClient(), []);
 
@@ -85,6 +117,19 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
   // Keep a ref so callbacks always read the latest value without re-creating
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
+
+  // ── Today-added counter (persisted in localStorage per calendar day) ────────
+  const [todayAdded, setTodayAdded] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0;
+    try {
+      const raw = localStorage.getItem('wc2026_today_log');
+      if (raw) {
+        const { date, count } = JSON.parse(raw) as { date: string; count: number };
+        if (date === new Date().toDateString()) return count;
+      }
+    } catch { /* ignore */ }
+    return 0;
+  });
 
   // Debounce timers: we send the final quantity to Supabase after 600 ms of inactivity
   const debounceMap = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -177,9 +222,23 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
 
   const incrementCard = useCallback(
     (cardId: string) => {
-      const next = (stateRef.current.cardMap[cardId] ?? 0) + 1;
+      const prev = stateRef.current.cardMap[cardId] ?? 0;
+      const next = prev + 1;
       dispatch({ type: 'UPDATE_CARD', cardId, quantity: next }); // instant UI
       syncToSupabase(cardId, next);
+      // Track first-time additions for the "today" counter
+      if (prev === 0) {
+        setTodayAdded(c => {
+          const newCount = c + 1;
+          try {
+            localStorage.setItem(
+              'wc2026_today_log',
+              JSON.stringify({ date: new Date().toDateString(), count: newCount })
+            );
+          } catch { /* quota */ }
+          return newCount;
+        });
+      }
     },
     [syncToSupabase]
   );
@@ -203,19 +262,72 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
 
   // ── 6. Derived stats ────────────────────────────────────────────────────────
   const stats = useMemo(() => {
-    const owned      = Object.keys(state.cardMap).length;
+    const cardMap    = state.cardMap;
+    const entries    = Object.entries(cardMap);
+    const owned      = entries.length;
     const missing    = TOTAL_STICKERS - owned;
-    const duplicates = Object.values(state.cardMap).filter(q => q > 1).length;
     const percentage = TOTAL_STICKERS > 0 ? Math.round((owned / TOTAL_STICKERS) * 100) : 0;
-    return { owned, missing, duplicates, total: TOTAL_STICKERS, percentage };
+
+    // Duplicates & trade power
+    const dupEntries    = entries.filter(([, q]) => q > 1);
+    const duplicates    = dupEntries.length;
+    const tradeableCount = dupEntries.reduce((sum, [, q]) => sum + (q - 1), 0);
+    const tradePower    = missing > 0
+      ? Math.min(100, Math.round((tradeableCount / missing) * 100))
+      : 0;
+
+    // Most duplicated card (highest quantity)
+    const mostDuplicated = entries.length > 0
+      ? entries.reduce<[string, number]>(
+          (best, cur) => (cur[1] > best[1] ? cur : best),
+          entries[0]
+        )
+      : null;
+
+    // Specials vs normals
+    const specialsTotal  = SPECIAL_STICKER_IDS.size;
+    const specialsOwned  = entries.filter(([id]) => SPECIAL_STICKER_IDS.has(id)).length;
+    const specialsPercentage = specialsTotal > 0
+      ? Math.round((specialsOwned / specialsTotal) * 100) : 0;
+    const normalsTotal   = TOTAL_STICKERS - specialsTotal;
+    const normalsOwned   = owned - specialsOwned;
+    const normalsPercentage = normalsTotal > 0
+      ? Math.round((normalsOwned / normalsTotal) * 100) : 0;
+
+    // Per-team progress sorted by completion % descending
+    const groupProgress: GroupProgressItem[] = TEAMS.map(team => {
+      const stickers  = getTeamStickers(team);
+      const teamOwned = stickers.filter(id => cardMap[id] !== undefined).length;
+      return {
+        code:       team.code,
+        name:       team.name,
+        flag:       team.flag,
+        group:      team.group,
+        owned:      teamOwned,
+        total:      team.stickerCount,
+        percentage: Math.round((teamOwned / team.stickerCount) * 100),
+      };
+    }).sort((a, b) => b.percentage - a.percentage);
+
+    return {
+      owned, missing, duplicates, total: TOTAL_STICKERS, percentage,
+      tradeableCount, tradePower,
+      specialsOwned, specialsTotal, specialsPercentage,
+      normalsOwned, normalsTotal, normalsPercentage,
+      mostDuplicated: mostDuplicated
+        ? { cardId: mostDuplicated[0], count: mostDuplicated[1] }
+        : null,
+      groupProgress,
+    };
   }, [state.cardMap]);
 
   return (
     <AlbumContext.Provider
       value={{
-        cardMap: state.cardMap,
-        user:    state.user,
-        loading: state.loading,
+        cardMap:    state.cardMap,
+        user:       state.user,
+        loading:    state.loading,
+        todayAdded,
         incrementCard,
         decrementCard,
         removeCard,

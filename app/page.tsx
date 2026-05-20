@@ -2,10 +2,14 @@
 
 import { useAlbum } from '@/contexts/AlbumContext';
 import { ProgressRing } from '@/components/ProgressRing';
-import { StatsWidget   } from '@/components/StatsWidget';
+import { StatsWidget } from '@/components/StatsWidget';
+import { HowToCollapsible } from '@/components/HowToCollapsible';
+import { GroupProgressCarousel } from '@/components/GroupProgressCarousel';
+import { SpecialsProgress } from '@/components/SpecialsProgress';
+import { TradePowerCard, CuriosityCards } from '@/components/CuriosityCards';
 
 export default function DashboardPage() {
-  const { loading, stats } = useAlbum();
+  const { loading, stats, todayAdded } = useAlbum();
 
   return (
     <div className="min-h-screen bg-ios-gray6 dark:bg-black flex flex-col">
@@ -19,7 +23,7 @@ export default function DashboardPage() {
         </h1>
       </header>
 
-      {/* ── Progress Ring (iOS Health widget feel) ── */}
+      {/* ── Progress Ring ── */}
       <section className="flex flex-col items-center py-8 gap-2">
         {loading ? (
           <div className="w-[200px] h-[200px] rounded-full bg-ios-gray5 dark:bg-[#2C2C2E] animate-pulse" />
@@ -32,10 +36,10 @@ export default function DashboardPage() {
       </section>
 
       {/* ── Stats cards ── */}
-      <section className="pb-6">
+      <section className="pb-4">
         {loading ? (
           <div className="flex gap-3 px-4">
-            {[0,1,2].map(i => (
+            {[0, 1, 2].map(i => (
               <div key={i} className="flex-1 h-20 rounded-2xl bg-ios-gray5 dark:bg-[#2C2C2E] animate-pulse" />
             ))}
           </div>
@@ -48,18 +52,52 @@ export default function DashboardPage() {
         )}
       </section>
 
-      {/* ── Quick info banner ── */}
-      <section className="mx-4 rounded-2xl bg-white dark:bg-[#1C1C1E] shadow-ios-card p-4">
-        <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
-          ¿Cómo usar?
-        </p>
-        <ul className="text-xs text-ios-gray dark:text-ios-gray2 space-y-1 list-none">
-          <li>• <strong>Tap</strong> en un cromo para marcarlo como obtenido</li>
-          <li>• <strong>Tap nuevamente</strong> para añadir repetidas</li>
-          <li>• <strong>Mantén presionado</strong> para opciones avanzadas</li>
-          <li>• <strong>Intercambio</strong> para hacer trade con amigos via QR</li>
-        </ul>
+      {/* ── Detailed progress (normals vs specials) ── */}
+      {!loading && (
+        <section className="pb-4">
+          <SpecialsProgress
+            normalsOwned={stats.normalsOwned}
+            normalsTotal={stats.normalsTotal}
+            normalsPercentage={stats.normalsPercentage}
+            specialsOwned={stats.specialsOwned}
+            specialsTotal={stats.specialsTotal}
+            specialsPercentage={stats.specialsPercentage}
+          />
+        </section>
+      )}
+
+      {/* ── Group progress carousel ── */}
+      {!loading && (
+        <section className="pb-4">
+          <GroupProgressCarousel groupProgress={stats.groupProgress} />
+        </section>
+      )}
+
+      {/* ── Trade power + curiosity cards ── */}
+      {!loading && (
+        <section className="px-4 pb-4 flex gap-3">
+          <TradePowerCard
+            tradePower={stats.tradePower}
+            tradeableCount={stats.tradeableCount}
+            missing={stats.missing}
+          />
+        </section>
+      )}
+
+      {!loading && (
+        <section className="pb-4">
+          <CuriosityCards
+            todayAdded={todayAdded}
+            mostDuplicated={stats.mostDuplicated}
+          />
+        </section>
+      )}
+
+      {/* ── Collapsible how-to ── */}
+      <section className="pb-8">
+        <HowToCollapsible />
       </section>
     </div>
   );
 }
+
