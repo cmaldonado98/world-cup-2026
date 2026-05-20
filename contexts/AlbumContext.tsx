@@ -49,6 +49,7 @@ export interface AlbumContextValue {
   incrementCard: (cardId: string) => void;
   decrementCard: (cardId: string) => void;
   removeCard:    (cardId: string) => void;
+  importCards:   (cards: CardMap) => void;
   stats: {
     owned:              number;
     missing:            number;
@@ -260,6 +261,21 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
     [syncToSupabase]
   );
 
+  const importCards = useCallback(
+    (cards: CardMap) => {
+      dispatch({ type: 'LOAD_CARDS', cards });
+      try { localStorage.setItem(LS_KEY, JSON.stringify(cards)); } catch { /* quota */ }
+      // Sync each card to Supabase if logged in
+      const user = stateRef.current.user;
+      if (user) {
+        for (const [cardId, quantity] of Object.entries(cards)) {
+          syncToSupabase(cardId, quantity);
+        }
+      }
+    },
+    [syncToSupabase]
+  );
+
   // ── 6. Derived stats ────────────────────────────────────────────────────────
   const stats = useMemo(() => {
     const cardMap    = state.cardMap;
@@ -331,6 +347,7 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
         incrementCard,
         decrementCard,
         removeCard,
+        importCards,
         stats,
       }}
     >

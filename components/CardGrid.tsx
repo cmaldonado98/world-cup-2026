@@ -62,7 +62,11 @@ const CountrySection = memo(function CountrySection({
   const ownedCount   = allStickers.filter(id => (cardMap[id] ?? 0) > 0).length;
 
   return (
-    <div id={`section-${team.code}`} ref={wrapRef}>
+    <div
+      id={`section-${team.code}`}
+      ref={wrapRef}
+      style={{ scrollMarginTop: headerHeight }}
+    >
       {/* Sticky section header — clears the album page sticky top bar */}
       <div
         className="sticky z-10 flex items-center gap-2 px-4 py-2

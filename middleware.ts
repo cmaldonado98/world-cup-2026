@@ -27,8 +27,14 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // IMPORTANT: triggers token refresh if the session is close to expiry
-  await supabase.auth.getUser();
+  // IMPORTANT: triggers token refresh if the session is close to expiry.
+  // Wrapped in try/catch so a Supabase network error (e.g. paused project)
+  // never crashes the middleware and blocks the entire app.
+  try {
+    await supabase.auth.getUser();
+  } catch {
+    // Supabase unreachable — continue without refreshing the session
+  }
 
   return supabaseResponse;
 }

@@ -1,5 +1,5 @@
 // Service worker – cache-first for static assets, network-first for API calls
-const CACHE = 'wc2026-v1';
+const CACHE = 'wc2026-v2'; // bump version to invalidate old caches
 
 // Pre-cache app shell routes on install
 const PRECACHE = ['/', '/album', '/repetidos', '/intercambio'];
@@ -28,6 +28,11 @@ self.addEventListener('fetch', (event) => {
 
   // Skip non-GET and cross-origin except Supabase
   if (request.method !== 'GET') return;
+
+  // Never cache Next.js build chunks — they are content-addressed and managed
+  // by Next.js itself; caching them here causes stale-chunk errors after rebuilds.
+  if (url.pathname.startsWith('/_next/static/chunks/') ||
+      url.pathname.startsWith('/_next/static/css/')) return;
 
   // Network-first for Supabase API (always want fresh data)
   if (url.hostname.includes('supabase.co')) {
