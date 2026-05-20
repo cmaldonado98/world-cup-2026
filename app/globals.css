@@ -58,6 +58,14 @@
 }
 .animate-pop-in { animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 
+/* ── Card "just collected" scale pop ── */
+@keyframes cardPop {
+  0%   { transform: scale(0.82); }
+  55%  { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+.animate-card-pop { animation: cardPop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
 /* ── iOS-style segmented control ── */
 .segmented-active {
   background: white;

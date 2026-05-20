@@ -1,14 +1,14 @@
 'use client';
 
-import React, { memo } from 'react';
+import React, { memo, useEffect, useRef, useState } from 'react';
 import { useLongPress } from '@/lib/hooks/useLongPress';
 
 interface CardItemProps {
-  cardId:      string;  // e.g. "ARG 10"
-  quantity:    number;
-  onIncrement: (id: string) => void;
-  onLongPress: (id: string) => void;
-  showTeamCode?: boolean; // If true, displays team code above number
+  cardId:       string;
+  quantity:     number;
+  onIncrement:  (id: string) => void;
+  onLongPress:  (id: string) => void;
+  showTeamCode?: boolean;
 }
 
 /**
@@ -22,15 +22,34 @@ interface CardItemProps {
 const CardItem = memo(function CardItem({
   cardId, quantity, onIncrement, onLongPress, showTeamCode
 }: CardItemProps) {
-  // Extract the numeric part and team code
-  const number = cardId.replace(/^[A-Z]+/, '') || 'Logo';
-  const teamCode = cardId.match(/^[A-Z]+/)?.[0] || '';
+  const number   = cardId.replace(/^[A-Z]+/, '') || 'Logo';
+  const teamCode = cardId.match(/^[A-Z]+/)?.[0] ?? '';
 
+  // ── Pop animation when card goes from missing → owned ─────────────────────
+  const prevQRef   = useRef(quantity);
+  const [justAdded, setJustAdded] = useState(false);
+
+  useEffect(() => {
+    if (prevQRef.current === 0 && quantity >= 1) {
+      setJustAdded(true);
+      const t = setTimeout(() => setJustAdded(false), 400);
+      return () => clearTimeout(t);
+    }
+    prevQRef.current = quantity;
+  }, [quantity]);
+
+  // ── Long-press / tap handlers ──────────────────────────────────────────────
   const handlers = useLongPress(
     () => onLongPress(cardId),
     {
       delay:   480,
-      onPress: () => onIncrement(cardId),
+      onPress: () => {
+        // Haptic feedback (Android + some browsers)
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          navigator.vibrate(50);
+        }
+        onIncrement(cardId);
+      },
     }
   );
 
@@ -45,6 +64,8 @@ const CardItem = memo(function CardItem({
         'relative flex flex-col items-center justify-center rounded-xl',
         'h-11 w-full text-sm font-semibold select-none',
         'tap-scale outline-none focus-visible:ring-2 focus-visible:ring-ios-blue',
+        'transition-colors duration-200',
+        justAdded ? 'animate-card-pop' : '',
         owned
           ? 'bg-[#34C759] text-white'
           : 'bg-ios-gray5 dark:bg-[#2C2C2E] text-ios-gray dark:text-ios-gray2',
@@ -53,7 +74,7 @@ const CardItem = memo(function CardItem({
       {showTeamCode && (
         <span className="text-[10px] leading-tight opacity-75 mt-0.5">{teamCode}</span>
       )}
-      <span className={showTeamCode ? "leading-tight mb-0.5" : ""}>{number}</span>
+      <span className={showTeamCode ? 'leading-tight mb-0.5' : ''}>{number}</span>
 
       {/* Orange badge for repeated stickers */}
       {hasExtra && (

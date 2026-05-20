@@ -1,66 +1,93 @@
 'use client';
 
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { CardItem          } from '@/components/CardItem';
 import type { Team         } from '@/lib/data/teams';
 import { getTeamStickers   } from '@/lib/data/teams';
 import type { CardMap      } from '@/contexts/AlbumContext';
 
+// ── Status filter type (exported so album/page can import it) ─────────────────
+export type StatusFilter = 'all' | 'missing' | 'duplicates';
+
 // ── Country section ────────────────────────────────────────────────────────────
 
 interface CountrySectionProps {
-  team:        Team;
-  cardMap:     CardMap;
-  onIncrement: (id: string) => void;
-  onLongPress: (id: string) => void;
+  team:         Team;
+  cardMap:      CardMap;
+  onIncrement:  (id: string) => void;
+  onLongPress:  (id: string) => void;
+  statusFilter: StatusFilter;
+  headerHeight: number;
 }
 
 /**
  * Lazy-renders its sticker grid only when the section enters (or approaches)
- * the viewport. A height placeholder is shown while offscreen so the page
- * doesn't collapse and scrollbar position stays stable.
+ * the viewport. Respects the active status filter to show only relevant stickers.
+ * The sticky header sits at `headerHeight` px from the top so it clears the
+ * album page's own sticky bar.
  */
 const CountrySection = memo(function CountrySection({
-  team, cardMap, onIncrement, onLongPress,
+  team, cardMap, onIncrement, onLongPress, statusFilter, headerHeight,
 }: CountrySectionProps) {
-  const wrapRef     = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
+  const allStickers = getTeamStickers(team);
+
+  // Filter stickers to only those matching the active status filter
+  const visibleStickers = useMemo(() => {
+    switch (statusFilter) {
+      case 'missing':    return allStickers.filter(id => !(cardMap[id]));
+      case 'duplicates': return allStickers.filter(id => (cardMap[id] ?? 0) > 1);
+      default:           return allStickers;
+    }
+  }, [allStickers, statusFilter, cardMap]);
+
   useEffect(() => {
+    if (visibleStickers.length === 0) return;
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setVisible(true); },
-      { rootMargin: '300px 0px' } // pre-load 300px before entering view
+      { rootMargin: '300px 0px' }
     );
     if (wrapRef.current) observer.observe(wrapRef.current);
     return () => observer.disconnect();
-  }, []);
+  }, [visibleStickers.length]);
 
-  const stickers   = getTeamStickers(team);
-  const cols       = 5;
-  const rowH       = 52; // approximate px per row (cell h-11 = 44px + gap)
-  const placeholderH = Math.ceil(stickers.length / cols) * rowH;
+  // Hide the entire section when nothing matches the current filter
+  if (visibleStickers.length === 0) return <div id={`section-${team.code}`} />;
 
-  // Count owned in this section for the header badge
-  const ownedCount = stickers.filter(id => (cardMap[id] ?? 0) > 0).length;
+  const cols         = 5;
+  const rowH         = 52;
+  const placeholderH = Math.ceil(visibleStickers.length / cols) * rowH;
+  const ownedCount   = allStickers.filter(id => (cardMap[id] ?? 0) > 0).length;
 
   return (
     <div id={`section-${team.code}`} ref={wrapRef}>
-      {/* Sticky section header */}
-      <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2
-                      bg-ios-gray6/90 dark:bg-black/90 backdrop-blur-ios border-b
-                      border-gray-200/40 dark:border-gray-800/40">
+      {/* Sticky section header — clears the album page sticky top bar */}
+      <div
+        className="sticky z-10 flex items-center gap-2 px-4 py-2
+                   bg-ios-gray6/90 dark:bg-black/90 backdrop-blur-ios border-b
+                   border-gray-200/40 dark:border-gray-800/40"
+        style={{ top: headerHeight }}
+      >
         <span className="text-lg leading-none">{team.flag}</span>
-        <span className="text-sm font-semibold text-gray-900 dark:text-white flex-1">
+        <span className="text-sm font-semibold text-gray-900 dark:text-white">
           {team.name}
         </span>
-        <span className="text-xs font-bold text-ios-gray tabular-nums">
-          {ownedCount}/{stickers.length}
+        {/* Country code badge */}
+        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full
+                         bg-[#3A3A3C]/10 dark:bg-[#636366]/25
+                         text-ios-gray dark:text-ios-gray2 tracking-wider">
+          {team.code}
+        </span>
+        <span className="ml-auto text-xs font-bold text-ios-gray tabular-nums">
+          {ownedCount}/{allStickers.length}
         </span>
       </div>
 
       {visible ? (
         <div className="grid grid-cols-5 gap-2 px-3 py-3">
-          {stickers.map(id => (
+          {visibleStickers.map(id => (
             <CardItem
               key={id}
               cardId={id}
@@ -71,7 +98,6 @@ const CountrySection = memo(function CountrySection({
           ))}
         </div>
       ) : (
-        // Placeholder keeps scroll position stable while offscreen
         <div style={{ height: placeholderH }} aria-hidden="true" />
       )}
     </div>
@@ -83,10 +109,12 @@ const CountrySection = memo(function CountrySection({
 import { TEAMS, GROUPS } from '@/lib/data/teams';
 
 interface CardGridProps {
-  cardMap:     CardMap;
-  filter:      string;  // search text – numeric substring filter
-  onIncrement: (id: string) => void;
-  onLongPress: (id: string) => void;
+  cardMap:      CardMap;
+  filter:       string;        // text search
+  statusFilter: StatusFilter;  // owned-state chip filter
+  headerHeight: number;        // px height of the album page sticky bar
+  onIncrement:  (id: string) => void;
+  onLongPress:  (id: string) => void;
 }
 
 // Group label colours (cycles through A–L; Especiales and CocaCola get fixed colours)
@@ -113,8 +141,8 @@ function groupLabel(name: string) {
   return `Grupo ${name}`;
 }
 
-export function CardGrid({ cardMap, filter, onIncrement, onLongPress }: CardGridProps) {
-  // When a numeric filter is active, show only matching sticker IDs across all teams
+export function CardGrid({ cardMap, filter, statusFilter, headerHeight, onIncrement, onLongPress }: CardGridProps) {
+  // When a text filter is active, show a flat list of matching sticker IDs
   if (filter.trim()) {
     const needle = filter.trim();
     const matches: string[] = [];
@@ -126,14 +154,20 @@ export function CardGrid({ cardMap, filter, onIncrement, onLongPress }: CardGrid
       }
     }
 
+    // Apply status filter on top of text search
+    const filtered =
+      statusFilter === 'missing'    ? matches.filter(id => !(cardMap[id])) :
+      statusFilter === 'duplicates' ? matches.filter(id => (cardMap[id] ?? 0) > 1) :
+      matches;
+
     return (
       <div className="grid grid-cols-5 gap-2 px-3 py-3">
-        {matches.length === 0 ? (
+        {filtered.length === 0 ? (
           <p className="col-span-5 text-center text-ios-gray py-12 text-sm">
-            No se encontró el cromo "{filter}"
+            No se encontró el cromo &ldquo;{filter}&rdquo;
           </p>
         ) : (
-          matches.map(id => (
+          filtered.map(id => (
             <CardItem
               key={id}
               cardId={id}
@@ -171,6 +205,8 @@ export function CardGrid({ cardMap, filter, onIncrement, onLongPress }: CardGrid
                 cardMap={cardMap}
                 onIncrement={onIncrement}
                 onLongPress={onLongPress}
+                statusFilter={statusFilter}
+                headerHeight={headerHeight}
               />
             ))}
           </div>
