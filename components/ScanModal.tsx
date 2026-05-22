@@ -10,6 +10,7 @@ import {
   Trash2,
   Loader2,
   RefreshCw,
+  Maximize2,
 } from 'lucide-react';
 import { useAlbum } from '@/contexts/AlbumContext';
 import { getAllStickers } from '@/lib/data/teams';
@@ -46,11 +47,36 @@ export interface ScanModalProps {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function fileToBase64(file: File): Promise<string> {
+/**
+ * Read a file and draw it through a <canvas>.
+ * The browser auto-applies EXIF rotation during drawImage, so the resulting
+ * pixels — and their dimensions — match exactly what the user sees on screen.
+ * Vision API receives this corrected image, making its pixel coordinates line
+ * up with the displayed image for the SVG overlay.
+ */
+function normalizeImage(file: File): Promise<{ dataUrl: string; w: number; h: number }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
     reader.onerror = reject;
+    reader.onload = () => {
+      const img = new window.Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        // naturalWidth/naturalHeight in modern browsers already reflect EXIF
+        canvas.width  = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { reject(new Error('Canvas unavailable')); return; }
+        ctx.drawImage(img, 0, 0); // bakes EXIF rotation into pixels
+        resolve({
+          dataUrl: canvas.toDataURL('image/jpeg', 0.88),
+          w: canvas.width,
+          h: canvas.height,
+        });
+      };
+      img.src = reader.result as string;
+    };
     reader.readAsDataURL(file);
   });
 }
@@ -64,6 +90,7 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
   const [codes, setCodes]               = useState<CodeEntry[]>([]);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [imageDims, setImageDims]       = useState<ImageDims | null>(null);
+  const [imageExpanded, setImageExpanded] = useState(false);
   const [newCodeInput, setNewCodeInput] = useState('');
   const [error, setError]               = useState('');
   const [doneResult, setDoneResult]     = useState<DoneResult | null>(null);
@@ -75,24 +102,24 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
       setError('');
 
       try {
-        const dataUrl = await fileToBase64(file);
+        // Draw through canvas so EXIF rotation is baked into the pixels.
+        // Vision API gets the same orientation the user sees, so coordinates align.
+        const { dataUrl, w, h } = await normalizeImage(file);
+        // canvas.toDataURL always produces a data:image/ URL — validate explicitly
+        if (!dataUrl.startsWith('data:image/')) {
+          setError('Formato de imagen no compatible');
+          setPhase('capture');
+          return;
+        }
         setImageDataUrl(dataUrl);
-
-        // Measure natural dimensions so the SVG viewBox maps correctly
-        const dims = await new Promise<ImageDims>((resolve) => {
-          const img = new window.Image();
-          img.onload  = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
-          img.onerror = () => resolve({ w: 0, h: 0 });
-          img.src = dataUrl;
-        });
-        setImageDims(dims);
+        setImageDims({ w, h });
 
         const imageBase64 = dataUrl.split(',')[1];
 
         const res = await fetch('/api/scan-cards', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageBase64, imageWidth: dims.w, imageHeight: dims.h }),
+          body: JSON.stringify({ imageBase64, imageWidth: w, imageHeight: h }),
         });
 
         const data: {
@@ -219,6 +246,7 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
     setError('');
     setImageDataUrl(null);
     setImageDims(null);
+    setImageExpanded(false);
     setPhase('capture');
   }, []);
 
@@ -301,8 +329,11 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
             <>
               {/* ── Captured photo with SVG code overlays ── */}
               {imageDataUrl && imageDims && imageDims.w > 0 && (
-                <div
-                  className="relative rounded-2xl overflow-hidden bg-black mb-3"
+                <button
+                  type="button"
+                  onClick={() => setImageExpanded(true)}
+                  aria-label="Expandir imagen"
+                  className="relative w-full rounded-2xl overflow-hidden bg-black mb-3 cursor-zoom-in"
                   style={{
                     aspectRatio: `${imageDims.w} / ${imageDims.h}`,
                     maxHeight: '40vh',
@@ -349,7 +380,11 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
                       );
                     })}
                   </svg>
-                </div>
+                  {/* Expand hint */}
+                  <div className="absolute top-2 right-2 bg-black/50 rounded-full p-1.5 pointer-events-none">
+                    <Maximize2 size={12} className="text-white" />
+                  </div>
+                </button>
               )}
 
               <p className="text-xs text-ios-gray mb-3">
@@ -508,6 +543,74 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
           )}
         </div>
       </div>
+
+      {/* ── Fullscreen image viewer ── */}
+      {imageExpanded && imageDataUrl && imageDims && (
+        <div
+          className="fixed inset-0 z-[60] bg-black flex items-center justify-center"
+          onClick={() => setImageExpanded(false)}
+        >
+          <div
+            style={{
+              position: 'relative',
+              aspectRatio: `${imageDims.w} / ${imageDims.h}`,
+              width: '100vw',
+              maxWidth: `calc(100dvh * ${imageDims.w} / ${imageDims.h})`,
+              maxHeight: '100dvh',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageDataUrl}
+              alt="Foto escaneada"
+              className="absolute inset-0 w-full h-full object-fill"
+            />
+            <svg
+              className="absolute inset-0 w-full h-full pointer-events-none"
+              viewBox={`0 0 ${imageDims.w} ${imageDims.h}`}
+              preserveAspectRatio="none"
+            >
+              {codes.map((entry) => {
+                if (!entry.px || !entry.py) return null;
+                const fs  = Math.round(Math.min(imageDims.w, imageDims.h) / 14);
+                const pad = Math.round(fs * 0.45);
+                const rw  = entry.id.length * fs * 0.65 + pad * 2;
+                const rh  = fs + pad * 2;
+                return (
+                  <g key={entry.id} transform={`translate(${entry.px},${entry.py})`}>
+                    <rect
+                      x={-rw / 2} y={-rh / 2}
+                      width={rw}  height={rh}
+                      rx={rh / 3}
+                      fill={entry.selected ? '#007AFF' : '#6b7280'}
+                      opacity="0.9"
+                    />
+                    <text
+                      x="0" y="0"
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fontSize={fs}
+                      fontWeight="bold"
+                      fontFamily="monospace"
+                      fill="white"
+                    >
+                      {entry.id}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+            <button
+              onClick={() => setImageExpanded(false)}
+              aria-label="Cerrar vista ampliada"
+              className="absolute top-3 right-3 w-10 h-10 flex items-center justify-center rounded-full bg-black/60 text-white"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
