@@ -76,17 +76,34 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
 
       try {
         const dataUrl = await fileToBase64(file);
-        // Strip the "data:image/...;base64," prefix
+        setImageDataUrl(dataUrl);
+
+        // Measure natural dimensions so the SVG viewBox maps correctly
+        const dims = await new Promise<ImageDims>((resolve) => {
+          const img = new window.Image();
+          img.onload  = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+          img.onerror = () => resolve({ w: 0, h: 0 });
+          img.src = dataUrl;
+        });
+        setImageDims(dims);
+
         const imageBase64 = dataUrl.split(',')[1];
 
         const res = await fetch('/api/scan-cards', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageBase64 }),
+          body: JSON.stringify({ imageBase64, imageWidth: dims.w, imageHeight: dims.h }),
         });
 
-        const data: { success: boolean; detectedTexts?: string[]; error?: string } =
-          await res.json();
+        const data: {
+          success:        boolean;
+          detectedCodes?: DetectedCode[];
+          imageWidth?:    number;
+          imageHeight?:   number;
+          error?:         string;
+        } = await res.json();
+
+        console.log('[ScanModal] API response:', data);
 
         if (!data.success) {
           setError(data.error ?? 'Error al procesar la imagen');
@@ -94,22 +111,31 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
           return;
         }
 
-        const detected: string[] = data.detectedTexts ?? [];
-        console.log('[ScanModal] detectedTexts from API:', detected);
+        // Use server-computed dims if available (more accurate)
+        if (data.imageWidth && data.imageHeight) {
+          setImageDims({ w: data.imageWidth, h: data.imageHeight });
+        }
 
-        // Normalise + deduplicate + filter against album sticker set
-        const valid = [
-          ...new Set(
-            detected
-              .map((t) => t.trim().toUpperCase())
-              .filter((t) => VALID_STICKERS.has(t))
-          ),
-        ];
-        console.log('[ScanModal] valid after VALID_STICKERS filter:', valid);
+        const rawCodes: DetectedCode[] = data.detectedCodes ?? [];
+        console.log('[ScanModal] detectedCodes from API:', rawCodes);
 
-        // In remove-mode show only codes that actually have duplicates
-        const filtered =
-          mode === 'remove' ? valid.filter((id) => (cardMap[id] ?? 0) > 1) : valid;
+        // Filter against valid sticker set + mode constraints; deduplicate
+        const seen = new Set<string>();
+        const filtered: CodeEntry[] = [];
+        for (const dc of rawCodes) {
+          const id = dc.code.trim().toUpperCase();
+          if (!VALID_STICKERS.has(id) || seen.has(id)) continue;
+          if (mode === 'remove' && (cardMap[id] ?? 0) <= 1) continue;
+          seen.add(id);
+          filtered.push({
+            id,
+            selected: true,
+            // px/py of 0 means no bbox — don't show in overlay
+            px: dc.px > 0 ? dc.px : undefined,
+            py: dc.py > 0 ? dc.py : undefined,
+          });
+        }
+        console.log('[ScanModal] filtered codes:', filtered);
 
         if (filtered.length === 0) {
           setError(
@@ -121,7 +147,7 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
           return;
         }
 
-        setCodes(filtered.map((id) => ({ id, selected: true })));
+        setCodes(filtered);
         setPhase('confirm');
       } catch {
         setError('Error de conexión. Verifica tu internet e intenta de nuevo.');
