@@ -9,6 +9,7 @@
 #  NEXT_PUBLIC_SUPABASE_URL              https://xxx.supabase.co
 #  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY  sb_publishable_xxx…
 #  NEXT_PUBLIC_APP_URL                   https://tu-dominio.amplifyapp.com
+#  GOOGLE_VISION_API_KEY                 AIza… (variable de servidor, NO exponer al cliente)
 #
 #  ¡NUNCA subir .env.local al repositorio!
 #  Las vars NEXT_PUBLIC_* se hornean en el bundle durante `npm run build`.
@@ -26,6 +27,14 @@ frontend:
 
     build:
       commands:
+        # Verifica que la variable de servidor esté presente antes de buildear
+        - |
+          if [ -z "$GOOGLE_VISION_API_KEY" ]; then
+            echo "ERROR: GOOGLE_VISION_API_KEY no está configurada en Amplify Console"
+            exit 1
+          else
+            echo "OK: GOOGLE_VISION_API_KEY presente (${#GOOGLE_VISION_API_KEY} chars)"
+          fi
         - npm run build
 
   artifacts:
