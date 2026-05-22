@@ -1,13 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { ChevronRight, Camera } from 'lucide-react';
 import { useAlbum      } from '@/contexts/AlbumContext';
 import { TEAMS, getTeamStickers } from '@/lib/data/teams';
+
+const ScanModal = dynamic(() => import('@/components/ScanModal'), { ssr: false });
 
 export default function RepetidosPage() {
   const { loading, cardMap } = useAlbum();
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [scanOpen, setScanOpen]  = useState(false);
 
   // Only show teams that have at least one sticker with quantity > 1
   const teamsWithDupes = TEAMS.filter(team =>
@@ -21,13 +25,25 @@ export default function RepetidosPage() {
   return (
     <div className="min-h-screen bg-ios-gray6 dark:bg-black">
       {/* ── Header ── */}
-      <header className="px-4 pt-14 pb-4">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Repetidas</h1>
-        <p className="text-sm text-ios-gray mt-0.5">
-          {totalDupes > 0
-            ? `${totalDupes} cromos repetidos para intercambiar`
-            : 'Sin repetidas por ahora'}
-        </p>
+      <header className="px-4 pt-14 pb-4 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Repetidas</h1>
+          <p className="text-sm text-ios-gray mt-0.5">
+            {totalDupes > 0
+              ? `${totalDupes} cromos repetidos para intercambiar`
+              : 'Sin repetidas por ahora'}
+          </p>
+        </div>
+        {totalDupes > 0 && (
+          <button
+            onClick={() => setScanOpen(true)}
+            aria-label="Escanear para quitar repetidas"
+            className="flex items-center gap-1.5 mt-1 px-3 py-2 rounded-xl bg-[#007AFF] text-white text-sm font-semibold tap-scale"
+          >
+            <Camera size={16} />
+            Escanear
+          </button>
+        )}
       </header>
 
       {loading ? (
@@ -94,6 +110,11 @@ export default function RepetidosPage() {
             );
           })}
         </div>
+      )}
+
+      {/* ── Scan modal ── */}
+      {scanOpen && (
+        <ScanModal mode="remove" onClose={() => setScanOpen(false)} />
       )}
     </div>
   );

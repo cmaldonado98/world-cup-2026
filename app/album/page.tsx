@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Search, X } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { Search, X, Camera } from 'lucide-react';
 import { useAlbum         } from '@/contexts/AlbumContext';
 import { CardGrid          } from '@/components/CardGrid';
 import type { StatusFilter } from '@/components/CardGrid';
@@ -9,6 +10,9 @@ import { CountrySelector   } from '@/components/CountrySelector';
 import { ContextMenu       } from '@/components/ContextMenu';
 import { TEAMS             } from '@/lib/data/teams';
 import { useTeamSearch     } from '@/lib/hooks/useTeamSearch';
+
+// ScanModal uses FileReader + camera APIs — must be client-only
+const ScanModal = dynamic(() => import('@/components/ScanModal'), { ssr: false });
 
 const STATUS_CHIPS: { value: StatusFilter; label: string }[] = [
   { value: 'all',        label: 'Todos'      },
@@ -18,6 +22,7 @@ const STATUS_CHIPS: { value: StatusFilter; label: string }[] = [
 
 export default function AlbumPage() {
   const { loading, cardMap, incrementCard, decrementCard, removeCard } = useAlbum();
+  const [scanOpen, setScanOpen] = useState(false);
 
   const [filter,       setFilter]       = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -132,6 +137,22 @@ export default function AlbumPage() {
           onDecrement={decrementCard}
           onRemove={removeCard}
         />
+      )}
+
+      {/* ── Scan FAB ── */}
+      <button
+        onClick={() => setScanOpen(true)}
+        aria-label="Escanear cromos con cámara"
+        className="fixed bottom-28 right-4 z-30 w-14 h-14 flex items-center justify-center
+                   rounded-full bg-[#007AFF] text-white shadow-lg tap-scale
+                   active:scale-95 transition-transform"
+      >
+        <Camera size={24} />
+      </button>
+
+      {/* ── Scan modal ── */}
+      {scanOpen && (
+        <ScanModal mode="add" onClose={() => setScanOpen(false)} />
       )}
     </div>
   );

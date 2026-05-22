@@ -12,6 +12,16 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // SECURITY: All HTML page responses must not be cached by CDN (CloudFront/Amplify)
+        // or any intermediate proxy. Server-rendered pages contain user-specific data
+        // (RSC payload, auth state) and must always be fetched fresh per-request.
+        // Excludes Next.js static assets and public files which are safe to cache.
+        source: '/((?!_next\\/static|_next\\/image|favicon\\.ico|icons\\/|images\\/).*)',
+        headers: [
+          { key: 'Cache-Control', value: 'private, no-store, no-cache, must-revalidate' },
+        ],
+      },
+      {
         source: '/sw.js',
         headers: [
           { key: 'Service-Worker-Allowed', value: '/' },

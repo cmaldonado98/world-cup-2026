@@ -3,7 +3,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 // Refreshes the Supabase session cookie on every request so it never expires
 // while the user is actively using the app.
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
