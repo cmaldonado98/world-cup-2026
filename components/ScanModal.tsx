@@ -21,9 +21,18 @@ const VALID_STICKERS = new Set(getAllStickers());
 export type ScanMode = 'add' | 'remove';
 type Phase = 'capture' | 'processing' | 'confirm' | 'done';
 
+interface DetectedCode {
+  code: string;
+  px:   number; // center x in Vision pixel coords (0 = no bbox)
+  py:   number; // center y in Vision pixel coords
+}
+interface ImageDims { w: number; h: number }
+
 interface CodeEntry {
-  id: string;
+  id:       string;
   selected: boolean;
+  px?:      number; // undefined → manually added (no overlay)
+  py?:      number;
 }
 
 interface DoneResult {
@@ -51,11 +60,13 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
   const { cardMap, incrementCard, decrementCard } = useAlbum();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [phase, setPhase] = useState<Phase>('capture');
-  const [codes, setCodes] = useState<CodeEntry[]>([]);
+  const [phase, setPhase]               = useState<Phase>('capture');
+  const [codes, setCodes]               = useState<CodeEntry[]>([]);
+  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [imageDims, setImageDims]       = useState<ImageDims | null>(null);
   const [newCodeInput, setNewCodeInput] = useState('');
-  const [error, setError] = useState('');
-  const [doneResult, setDoneResult] = useState<DoneResult | null>(null);
+  const [error, setError]               = useState('');
+  const [doneResult, setDoneResult]     = useState<DoneResult | null>(null);
 
   // ── Process image → call API → filter valid codes ──────────────────────────
   const processImage = useCallback(
@@ -180,6 +191,8 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
   const handleRetake = useCallback(() => {
     setCodes([]);
     setError('');
+    setImageDataUrl(null);
+    setImageDims(null);
     setPhase('capture');
   }, []);
 
@@ -260,13 +273,66 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
           {/* ── Phase: confirm ── */}
           {phase === 'confirm' && (
             <>
+              {/* ── Captured photo with SVG code overlays ── */}
+              {imageDataUrl && imageDims && imageDims.w > 0 && (
+                <div
+                  className="relative rounded-2xl overflow-hidden bg-black mb-3"
+                  style={{
+                    aspectRatio: `${imageDims.w} / ${imageDims.h}`,
+                    maxHeight: '40vh',
+                  }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imageDataUrl}
+                    alt="Foto escaneada"
+                    className="w-full h-full object-fill"
+                  />
+                  <svg
+                    className="absolute inset-0 w-full h-full pointer-events-none"
+                    viewBox={`0 0 ${imageDims.w} ${imageDims.h}`}
+                    preserveAspectRatio="none"
+                  >
+                    {codes.map((entry) => {
+                      if (!entry.px || !entry.py) return null;
+                      const fs  = Math.round(Math.min(imageDims.w, imageDims.h) / 14);
+                      const pad = Math.round(fs * 0.45);
+                      const rw  = entry.id.length * fs * 0.65 + pad * 2;
+                      const rh  = fs + pad * 2;
+                      return (
+                        <g key={entry.id} transform={`translate(${entry.px},${entry.py})`}>
+                          <rect
+                            x={-rw / 2} y={-rh / 2}
+                            width={rw}  height={rh}
+                            rx={rh / 3}
+                            fill={entry.selected ? '#007AFF' : '#6b7280'}
+                            opacity="0.88"
+                          />
+                          <text
+                            x="0" y="0"
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            fontSize={fs}
+                            fontWeight="bold"
+                            fontFamily="monospace"
+                            fill="white"
+                          >
+                            {entry.id}
+                          </text>
+                        </g>
+                      );
+                    })}
+                  </svg>
+                </div>
+              )}
+
               <p className="text-xs text-ios-gray mb-3">
                 Toca un cromo para activarlo o desactivarlo. Pulsa{' '}
                 <span className="text-red-400">✕</span> para eliminar de la lista.
               </p>
 
               {/* Code list */}
-              <div className="max-h-56 overflow-y-auto rounded-2xl bg-ios-gray6 dark:bg-[#2C2C2E] divide-y divide-gray-200/60 dark:divide-gray-700/40 mb-3">
+              <div className="max-h-40 overflow-y-auto rounded-2xl bg-ios-gray6 dark:bg-[#2C2C2E] divide-y divide-gray-200/60 dark:divide-gray-700/40 mb-3">
                 {codes.map((entry) => {
                   const qty = cardMap[entry.id] ?? 0;
                   return (

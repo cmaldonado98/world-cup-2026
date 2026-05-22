@@ -1,5 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// ─── Vision types ──────────────────────────────────────────────────────────────
+interface BVertex { x: number; y: number }
+interface VAnnotation {
+  description: string;
+  boundingPoly?: { vertices: BVertex[] };
+}
+
+function mergeVertices(a: BVertex[], b: BVertex[]): BVertex[] {
+  const all = [...a, ...b];
+  const xs  = all.map(v => v.x ?? 0);
+  const ys  = all.map(v => v.y ?? 0);
+  return [
+    { x: Math.min(...xs), y: Math.min(...ys) },
+    { x: Math.max(...xs), y: Math.min(...ys) },
+    { x: Math.max(...xs), y: Math.max(...ys) },
+    { x: Math.min(...xs), y: Math.max(...ys) },
+  ];
+}
+
+function centerOf(vertices: BVertex[]): { px: number; py: number } {
+  if (!vertices.length) return { px: 0, py: 0 };
+  const px = Math.round(vertices.reduce((s, v) => s + (v.x ?? 0), 0) / vertices.length);
+  const py = Math.round(vertices.reduce((s, v) => s + (v.y ?? 0), 0) / vertices.length);
+  return { px, py };
+}
+
 export async function POST(request: NextRequest) {
   const apiKey = process.env.GOOGLE_VISION_API_KEY;
   if (!apiKey) {
@@ -10,9 +36,13 @@ export async function POST(request: NextRequest) {
   }
 
   let imageBase64: string;
+  let clientImageW = 0;
+  let clientImageH = 0;
   try {
     const body = await request.json();
-    imageBase64 = body.imageBase64;
+    imageBase64   = body.imageBase64;
+    clientImageW  = typeof body.imageWidth  === 'number' ? body.imageWidth  : 0;
+    clientImageH  = typeof body.imageHeight === 'number' ? body.imageHeight : 0;
     if (!imageBase64 || typeof imageBase64 !== 'string') {
       return NextResponse.json(
         { success: false, error: 'Missing imageBase64 field' },
@@ -67,37 +97,74 @@ export async function POST(request: NextRequest) {
   }
 
   const visionData = await visionRes.json();
-  const annotations: Array<{ description: string }> =
-    visionData.responses?.[0]?.textAnnotations ?? [];
+  const vResponse   = visionData.responses?.[0] ?? {};
+  const annotations: VAnnotation[] = vResponse.textAnnotations ?? [];
 
-  // ── Debug: log raw Vision response ──────────────────────────────────────────
-  console.log('[scan-cards] total annotations:', annotations.length);
+  // ── Image dimensions ──────────────────────────────────────────────────────
+  // Prefer client-supplied values; fall back to extent of first annotation bbox
+  let imageWidth  = clientImageW;
+  let imageHeight = clientImageH;
+  if ((!imageWidth || !imageHeight) && annotations[0]?.boundingPoly?.vertices) {
+    const verts = annotations[0].boundingPoly.vertices;
+    imageWidth  = Math.max(...verts.map(v => v.x ?? 0));
+    imageHeight = Math.max(...verts.map(v => v.y ?? 0));
+  }
+
+  // ── Debug logs ────────────────────────────────────────────────────────────
   const fullText = (annotations[0]?.description ?? '').toUpperCase();
-  console.log('[scan-cards] full text block (index 0):', JSON.stringify(fullText));
-  console.log(
-    '[scan-cards] individual tokens (index 1+):',
-    JSON.stringify(annotations.slice(1).map((a) => a.description))
-  );
+  console.log('[scan-cards] annotations:', annotations.length, '| imageSize:', imageWidth, 'x', imageHeight);
+  console.log('[scan-cards] full text block:', JSON.stringify(fullText));
+  console.log('[scan-cards] tokens:', JSON.stringify(annotations.slice(1).map(a => a.description)));
 
-  // Sticker codes are printed with an optional space: "RSA 6", "NOR 2", "MEX10"
-  // Regex captures letters and digits separately so we can strip the space.
-  // Also handles standalone "FWC" (logo sticker, no number).
-  const STICKER_RE = /\b([A-Z]{2,4}) ?(\d{1,2})\b|\b(FWC)\b/g;
-  const fromFullText: string[] = [];
-  for (const m of fullText.matchAll(STICKER_RE)) {
-    if (m[3]) {
-      fromFullText.push('FWC'); // standalone FWC logo sticker
-    } else {
-      fromFullText.push(`${m[1]}${m[2]}`); // join letters + digits (no space)
+  // ── Token-level extraction with bounding boxes ───────────────────────────
+  // A sticker code is either:
+  //   A) a single token already matching the pattern  ("MEX10", "FWC")
+  //   B) a letters-only token + adjacent digits-only token ("RSA" + "6" → "RSA6")
+  const detectedCodes: Array<{ code: string; px: number; py: number }> = [];
+  const seenCodes = new Set<string>();
+
+  for (let i = 1; i < annotations.length; i++) {
+    const curr     = annotations[i];
+    const currText = curr.description.trim().toUpperCase();
+    const verts    = curr.boundingPoly?.vertices ?? [];
+
+    // Case A: single complete code
+    if (/^[A-Z]{2,4}\d{1,2}$/.test(currText) || currText === 'FWC') {
+      if (!seenCodes.has(currText)) {
+        detectedCodes.push({ code: currText, ...centerOf(verts) });
+        seenCodes.add(currText);
+      }
+      continue;
+    }
+
+    // Case B: letters token + digits token → combined code
+    if (/^[A-Z]{2,4}$/.test(currText) && i + 1 < annotations.length) {
+      const next     = annotations[i + 1];
+      const nextText = next.description.trim().toUpperCase();
+      if (/^\d{1,2}$/.test(nextText)) {
+        const combined = currText + nextText;
+        if (!seenCodes.has(combined)) {
+          const merged = mergeVertices(verts, next.boundingPoly?.vertices ?? []);
+          detectedCodes.push({ code: combined, ...centerOf(merged) });
+          seenCodes.add(combined);
+        }
+        i++; // consume the digits token
+        continue;
+      }
     }
   }
-  console.log('[scan-cards] regex candidates from full text:', JSON.stringify(fromFullText));
 
-  // Keep individual tokens too as a fallback
-  const individualTokens = annotations.slice(1).map((a) => a.description);
+  // ── Regex fallback on full-text block (no positional data, px/py = 0) ────
+  const STICKER_RE = /\b([A-Z]{2,4}) ?(\d{1,2})\b|\b(FWC)\b/g;
+  for (const m of fullText.matchAll(STICKER_RE)) {
+    const code = m[3] ?? `${m[1]}${m[2]}`;
+    if (!seenCodes.has(code)) {
+      detectedCodes.push({ code, px: 0, py: 0 });
+      seenCodes.add(code);
+    }
+  }
 
-  const detectedTexts: string[] = [...fromFullText, ...individualTokens];
-  console.log('[scan-cards] final detectedTexts sent to client:', JSON.stringify(detectedTexts));
+  console.log('[scan-cards] detectedCodes:', JSON.stringify(detectedCodes));
 
-  return NextResponse.json({ success: true, detectedTexts });
+  return NextResponse.json({ success: true, detectedCodes, imageWidth, imageHeight });
 }
