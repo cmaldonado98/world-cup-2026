@@ -84,6 +84,7 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
         }
 
         const detected: string[] = data.detectedTexts ?? [];
+        console.log('[ScanModal] detectedTexts from API:', detected);
 
         // Normalise + deduplicate + filter against album sticker set
         const valid = [
@@ -93,6 +94,7 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
               .filter((t) => VALID_STICKERS.has(t))
           ),
         ];
+        console.log('[ScanModal] valid after VALID_STICKERS filter:', valid);
 
         // In remove-mode show only codes that actually have duplicates
         const filtered =

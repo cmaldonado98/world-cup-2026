@@ -70,8 +70,34 @@ export async function POST(request: NextRequest) {
   const annotations: Array<{ description: string }> =
     visionData.responses?.[0]?.textAnnotations ?? [];
 
-  // Index 0 is the full concatenated text block — skip it, use individual tokens
-  const detectedTexts: string[] = annotations.slice(1).map((a) => a.description);
+  // ── Debug: log raw Vision response ──────────────────────────────────────────
+  console.log('[scan-cards] total annotations:', annotations.length);
+  const fullText = (annotations[0]?.description ?? '').toUpperCase();
+  console.log('[scan-cards] full text block (index 0):', JSON.stringify(fullText));
+  console.log(
+    '[scan-cards] individual tokens (index 1+):',
+    JSON.stringify(annotations.slice(1).map((a) => a.description))
+  );
+
+  // Sticker codes are printed with an optional space: "RSA 6", "NOR 2", "MEX10"
+  // Regex captures letters and digits separately so we can strip the space.
+  // Also handles standalone "FWC" (logo sticker, no number).
+  const STICKER_RE = /\b([A-Z]{2,4}) ?(\d{1,2})\b|\b(FWC)\b/g;
+  const fromFullText: string[] = [];
+  for (const m of fullText.matchAll(STICKER_RE)) {
+    if (m[3]) {
+      fromFullText.push('FWC'); // standalone FWC logo sticker
+    } else {
+      fromFullText.push(`${m[1]}${m[2]}`); // join letters + digits (no space)
+    }
+  }
+  console.log('[scan-cards] regex candidates from full text:', JSON.stringify(fromFullText));
+
+  // Keep individual tokens too as a fallback
+  const individualTokens = annotations.slice(1).map((a) => a.description);
+
+  const detectedTexts: string[] = [...fromFullText, ...individualTokens];
+  console.log('[scan-cards] final detectedTexts sent to client:', JSON.stringify(detectedTexts));
 
   return NextResponse.json({ success: true, detectedTexts });
 }
