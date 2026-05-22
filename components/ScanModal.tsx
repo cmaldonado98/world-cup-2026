@@ -54,6 +54,12 @@ export interface ScanModalProps {
  * Vision API receives this corrected image, making its pixel coordinates line
  * up with the displayed image for the SVG overlay.
  */
+// Max pixels on the longest side sent to the API.
+// Amplify/API Gateway has a 6MB request body limit; at 1280px a JPEG encodes
+// to ~200-400KB → ~280-550KB base64, well within limits.
+// Vision API text detection works accurately at this resolution.
+const MAX_SCAN_PX = 1280;
+
 function normalizeImage(file: File): Promise<{ dataUrl: string; w: number; h: number }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -64,11 +70,17 @@ function normalizeImage(file: File): Promise<{ dataUrl: string; w: number; h: nu
       img.onload = () => {
         const canvas = document.createElement('canvas');
         // naturalWidth/naturalHeight in modern browsers already reflect EXIF
-        canvas.width  = img.naturalWidth;
-        canvas.height = img.naturalHeight;
+        const srcW = img.naturalWidth;
+        const srcH = img.naturalHeight;
+
+        // Scale down if the image exceeds MAX_SCAN_PX on either dimension
+        const scale = Math.min(1, MAX_SCAN_PX / Math.max(srcW, srcH));
+        canvas.width  = Math.round(srcW * scale);
+        canvas.height = Math.round(srcH * scale);
+
         const ctx = canvas.getContext('2d');
         if (!ctx) { reject(new Error('Canvas unavailable')); return; }
-        ctx.drawImage(img, 0, 0); // bakes EXIF rotation into pixels
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height); // bakes EXIF rotation + resize
         resolve({
           dataUrl: canvas.toDataURL('image/jpeg', 0.88),
           w: canvas.width,
