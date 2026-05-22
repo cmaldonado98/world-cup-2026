@@ -91,12 +91,21 @@ export async function POST(request: NextRequest) {
     const errorText = await visionRes.text().catch(() => '');
     console.error('[scan-cards] Vision API HTTP error', visionRes.status, errorText);
     return NextResponse.json(
-      { success: false, error: 'Vision API request failed' },
+      { success: false, error: `Vision API error ${visionRes.status}` },
       { status: 502 }
     );
   }
 
-  const visionData = await visionRes.json();
+  let visionData: { responses?: Array<{ textAnnotations?: VAnnotation[] }> };
+  try {
+    visionData = await visionRes.json();
+  } catch (e) {
+    console.error('[scan-cards] Failed to parse Vision API response', e);
+    return NextResponse.json(
+      { success: false, error: 'Vision API returned invalid response' },
+      { status: 502 }
+    );
+  }
   const vResponse   = visionData.responses?.[0] ?? {};
   const annotations: VAnnotation[] = vResponse.textAnnotations ?? [];
 

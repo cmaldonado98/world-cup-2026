@@ -122,6 +122,15 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
           body: JSON.stringify({ imageBase64, imageWidth: w, imageHeight: h }),
         });
 
+        // Guard against non-JSON responses (e.g. CloudFront 502/504 HTML error pages)
+        const contentType = res.headers.get('content-type') ?? '';
+        if (!contentType.includes('application/json')) {
+          console.error('[ScanModal] Non-JSON response', res.status, await res.text().catch(() => ''));
+          setError(`Error del servidor (${res.status}). Intenta de nuevo.`);
+          setPhase('capture');
+          return;
+        }
+
         const data: {
           success:        boolean;
           detectedCodes?: DetectedCode[];
