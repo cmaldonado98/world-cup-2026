@@ -1,8 +1,11 @@
-// Service worker – cache-first for static assets, network-first for API calls
-const CACHE = 'wc2026-v2'; // bump version to invalidate old caches
+// Service worker – cache-first for static assets only.
+// HTML navigation requests are NEVER cached to prevent session data from
+// one authenticated user bleeding into another user's browser.
+const CACHE = 'wc2026-v3'; // bumped: clears stale caches that held HTML pages
 
-// Pre-cache app shell routes on install
-const PRECACHE = ['/', '/album', '/repetidos', '/intercambio'];
+// Do NOT pre-cache HTML routes — they are server-rendered and may contain
+// user-specific hydration data (RSC payload, auth state).
+const PRECACHE = [];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -46,7 +49,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for everything else (Next.js static assets, fonts, etc.)
+  // SECURITY: Never cache HTML navigation requests.
+  // Pages are server-rendered and may embed user-specific data (RSC payload,
+  // auth state). Caching them would let one user's session appear in another
+  // user's browser if they share a device or if a CDN/SW serves stale HTML.
+  if (request.mode === 'navigate') {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  // Cache-first for static assets only (images, fonts, icons, etc.)
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
