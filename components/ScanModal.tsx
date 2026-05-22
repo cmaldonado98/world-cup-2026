@@ -352,18 +352,20 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
                   >
                     {codes.map((entry) => {
                       if (!entry.px || !entry.py) return null;
-                      const fs  = Math.round(Math.min(imageDims.w, imageDims.h) / 14);
+                      const isNew = (cardMap[entry.id] ?? 0) === 0;
+                      const fs  = Math.round(Math.min(imageDims.w, imageDims.h) / 18);
                       const pad = Math.round(fs * 0.45);
                       const rw  = entry.id.length * fs * 0.65 + pad * 2;
                       const rh  = fs + pad * 2;
+                      const bg  = entry.selected ? (isNew ? '#22c55e' : '#f97316') : '#6b7280';
                       return (
                         <g key={entry.id} transform={`translate(${entry.px},${entry.py})`}>
                           <rect
                             x={-rw / 2} y={-rh / 2}
                             width={rw}  height={rh}
                             rx={rh / 3}
-                            fill={entry.selected ? '#007AFF' : '#6b7280'}
-                            opacity="0.88"
+                            fill={bg}
+                            opacity={entry.selected ? '0.88' : '0.55'}
                           />
                           <text
                             x="0" y="0"
@@ -573,18 +575,20 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
             >
               {codes.map((entry) => {
                 if (!entry.px || !entry.py) return null;
-                const fs  = Math.round(Math.min(imageDims.w, imageDims.h) / 14);
+                const isNew = (cardMap[entry.id] ?? 0) === 0;
+                const fs  = Math.round(Math.min(imageDims.w, imageDims.h) / 18);
                 const pad = Math.round(fs * 0.45);
                 const rw  = entry.id.length * fs * 0.65 + pad * 2;
                 const rh  = fs + pad * 2;
+                const bg  = entry.selected ? (isNew ? '#22c55e' : '#f97316') : '#6b7280';
                 return (
                   <g key={entry.id} transform={`translate(${entry.px},${entry.py})`}>
                     <rect
                       x={-rw / 2} y={-rh / 2}
                       width={rw}  height={rh}
                       rx={rh / 3}
-                      fill={entry.selected ? '#007AFF' : '#6b7280'}
-                      opacity="0.9"
+                      fill={bg}
+                      opacity={entry.selected ? '0.9' : '0.55'}
                     />
                     <text
                       x="0" y="0"
