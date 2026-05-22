@@ -1,7 +1,7 @@
 'use client';
 
 // Load via next/dynamic with ssr: false (uses FileReader + camera APIs).
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import {
   Camera,
   X,
@@ -97,6 +97,13 @@ function normalizeImage(file: File): Promise<{ dataUrl: string; w: number; h: nu
 export default function ScanModal({ mode, onClose }: ScanModalProps) {
   const { cardMap, incrementCard, decrementCard } = useAlbum();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
 
   const [phase, setPhase]               = useState<Phase>('capture');
   const [codes, setCodes]               = useState<CodeEntry[]>([]);
