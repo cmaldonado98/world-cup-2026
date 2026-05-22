@@ -6,6 +6,14 @@ const nextConfig: NextConfig = {
   // No experimental edge runtime; all routes use Node.js runtime.
   // Do NOT add output:'export' — Amplify needs the SSR server to handle dynamic routes.
 
+  // Amplify SSR (Lambda) does not reliably expose non-NEXT_PUBLIC_ env vars at runtime.
+  // Baking them here at build time (where they ARE available, confirmed by amplify.yml check)
+  // embeds the values into the server bundle. These keys are ONLY referenced in server-side
+  // Route Handlers (app/api/*) and will never appear in client JS bundles.
+  env: {
+    GOOGLE_VISION_API_KEY: process.env.GOOGLE_VISION_API_KEY ?? '',
+  },
+
   // Amplify + CloudFront handle trailing slashes correctly with this set to false
   trailingSlash: false,
 
