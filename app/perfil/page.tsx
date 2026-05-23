@@ -145,16 +145,14 @@ export default function ProfilePage() {
         />
       </div>
 
-      {/* Actions */}
-      <div className="mt-auto">
-        <button
-          onClick={handleLogout}
-          className="flex items-center justify-center gap-2 w-full py-4 text-[#FF3B30] font-semibold bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-ios-card tap-scale"
-        >
-          <LogOut size={18} />
-          Cerrar Sesión
-        </button>
-      </div>
+      {/* Logout */}
+      <button
+        onClick={handleLogout}
+        className="flex items-center justify-center gap-2 w-full py-4 text-[#FF3B30] font-semibold bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-ios-card tap-scale"
+      >
+        <LogOut size={18} />
+        Cerrar Sesión
+      </button>
     </div>
   );
 }

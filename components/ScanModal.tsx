@@ -31,6 +31,7 @@ interface ImageDims { w: number; h: number }
 
 interface CodeEntry {
   id:       string;
+  count:    number; // how many of this sticker were detected
   selected: boolean;
   px?:      number; // undefined → manually added (no overlay)
   py?:      number;
@@ -174,21 +175,28 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
         const rawCodes: DetectedCode[] = data.detectedCodes ?? [];
         console.log('[ScanModal] detectedCodes from API:', rawCodes);
 
-        // Filter against valid sticker set + mode constraints; deduplicate
-        const seen = new Set<string>();
+        // Filter against valid sticker set + mode constraints; merge duplicates into count
+        const seen = new Map<string, number>(); // id → index in filtered
         const filtered: CodeEntry[] = [];
         for (const dc of rawCodes) {
           const id = dc.code.trim().toUpperCase();
-          if (!VALID_STICKERS.has(id) || seen.has(id)) continue;
+          if (!VALID_STICKERS.has(id)) continue;
           if (mode === 'remove' && (cardMap[id] ?? 0) <= 1) continue;
-          seen.add(id);
-          filtered.push({
-            id,
-            selected: true,
-            // px/py of 0 means no bbox — don't show in overlay
-            px: dc.px > 0 ? dc.px : undefined,
-            py: dc.py > 0 ? dc.py : undefined,
-          });
+          if (seen.has(id)) {
+            // Increment count for the existing entry
+            const idx = seen.get(id)!;
+            filtered[idx] = { ...filtered[idx], count: filtered[idx].count + 1 };
+          } else {
+            seen.set(id, filtered.length);
+            filtered.push({
+              id,
+              count: 1,
+              selected: true,
+              // px/py of 0 means no bbox — don't show in overlay
+              px: dc.px > 0 ? dc.px : undefined,
+              py: dc.py > 0 ? dc.py : undefined,
+            });
+          }
         }
         console.log('[ScanModal] filtered codes:', filtered);
 
@@ -230,15 +238,20 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
       setError(`"${id}" no es un código de cromo válido`);
       return;
     }
-    if (codes.some((c) => c.id === id)) {
-      setError(`"${id}" ya está en la lista`);
-      return;
-    }
     if (mode === 'remove' && (cardMap[id] ?? 0) <= 1) {
       setError(`"${id}" no tiene repetidas`);
       return;
     }
-    setCodes((prev) => [...prev, { id, selected: true }]);
+    // If already in list, increment its count
+    if (codes.some((c) => c.id === id)) {
+      setCodes((prev) =>
+        prev.map((c) => c.id === id ? { ...c, count: c.count + 1 } : c)
+      );
+      setNewCodeInput('');
+      setError('');
+      return;
+    }
+    setCodes((prev) => [...prev, { id, count: 1, selected: true }]);
     setNewCodeInput('');
     setError('');
   }, [newCodeInput, codes, cardMap, mode]);
@@ -249,10 +262,10 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
     let applied = 0;
     let skipped = 0;
 
-    for (const { id } of selected) {
+    for (const { id, count } of selected) {
       if (mode === 'add') {
-        incrementCard(id);
-        applied++;
+        for (let i = 0; i < count; i++) incrementCard(id);
+        applied += count;
       } else {
         // Re-check at apply time (state may have changed)
         if ((cardMap[id] ?? 0) > 1) {
@@ -278,7 +291,7 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
     setPhase('capture');
   }, []);
 
-  const selectedCount = codes.filter((c) => c.selected).length;
+  const selectedCount = codes.filter((c) => c.selected).reduce((s, c) => s + c.count, 0);
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
@@ -404,7 +417,7 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
                             fontFamily="monospace"
                             fill="white"
                           >
-                            {entry.id}
+                            {entry.count > 1 ? `${entry.id} ×${entry.count}` : entry.id}
                           </text>
                         </g>
                       );
@@ -448,24 +461,36 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
                         {entry.selected && <Check size={13} className="text-white" />}
                       </button>
 
-                      {/* Code */}
+                      {/* Code + count */}
                       <span className="font-mono text-sm font-bold text-gray-900 dark:text-white flex-1">
                         {entry.id}
+                        {entry.count > 1 && (
+                          <span className="text-xs font-normal text-ios-gray ml-1">×{entry.count}</span>
+                        )}
                       </span>
 
                       {/* Status badge */}
-                      {mode === 'add' && (
-                        <span
-                          className={[
-                            'text-xs px-2 py-0.5 rounded-full font-medium',
-                            qty === 0
-                              ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                              : 'bg-[#FF9500]/15 text-[#FF9500]',
-                          ].join(' ')}
-                        >
-                          {qty === 0 ? 'Nuevo' : `×${qty} repetida`}
-                        </span>
-                      )}
+                      {mode === 'add' && (() => {
+                        if (qty === 0 && entry.count === 1) {
+                          return (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
+                              Nuevo
+                            </span>
+                          );
+                        }
+                        if (qty === 0 && entry.count > 1) {
+                          return (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
+                              1 nuevo + {entry.count - 1} rep.
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-[#FF9500]/15 text-[#FF9500]">
+                            {entry.count > 1 ? `×${entry.count} rep.` : `×${qty} repetida`}
+                          </span>
+                        );
+                      })()}
                       {mode === 'remove' && (
                         <span
                           className={[
