@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAlbum } from '@/contexts/AlbumContext';
 import type { CardMap } from '@/contexts/AlbumContext';
 import { getSupabaseClient } from '@/lib/supabase/client';
-import { User, LogOut, Mail, Calendar, Download, Upload } from 'lucide-react';
+import { User, LogOut, Mail, Calendar, Download, Upload, RefreshCw } from 'lucide-react';
 
 export default function ProfilePage() {
   const { user, cardMap, importCards } = useAlbum();
@@ -56,6 +56,22 @@ export default function ProfilePage() {
     reader.readAsText(file);
     // Reset so the same file can be imported again if needed
     e.target.value = '';
+  };
+
+  const handleUpdate = async () => {
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (registration) {
+        await registration.update();
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        }
+      }
+      const keys = await caches.keys();
+      await Promise.all(keys.map((k) => caches.delete(k)));
+    }
+    window.location.reload();
   };
 
   const handleLogout = async () => {
@@ -145,16 +161,23 @@ export default function ProfilePage() {
         />
       </div>
 
-      {/* Actions */}
-      <div className="mt-auto">
-        <button
-          onClick={handleLogout}
-          className="flex items-center justify-center gap-2 w-full py-4 text-[#FF3B30] font-semibold bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-ios-card tap-scale"
-        >
-          <LogOut size={18} />
-          Cerrar Sesión
-        </button>
-      </div>
+      {/* Update PWA */}
+      <button
+        onClick={handleUpdate}
+        className="flex items-center justify-center gap-2 w-full py-4 text-ios-blue font-semibold bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-ios-card tap-scale"
+      >
+        <RefreshCw size={18} />
+        Actualizar
+      </button>
+
+      {/* Logout */}
+      <button
+        onClick={handleLogout}
+        className="flex items-center justify-center gap-2 w-full py-4 text-[#FF3B30] font-semibold bg-white dark:bg-[#1C1C1E] rounded-2xl shadow-ios-card tap-scale"
+      >
+        <LogOut size={18} />
+        Cerrar Sesión
+      </button>
     </div>
   );
 }

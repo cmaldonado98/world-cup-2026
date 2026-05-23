@@ -143,7 +143,7 @@ export default function AlbumPage() {
       <button
         onClick={() => setScanOpen(true)}
         aria-label="Escanear cromos con cámara"
-        className="fixed bottom-20 right-4 z-30 w-14 h-14 flex items-center justify-center
+        className="fixed bottom-24 right-4 z-30 w-14 h-14 flex items-center justify-center
                    rounded-full bg-[#007AFF] text-white shadow-lg tap-scale
                    active:scale-95 transition-transform"
       >
