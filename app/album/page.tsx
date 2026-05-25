@@ -50,6 +50,16 @@ export default function AlbumPage() {
   // Called by CountrySelector group chips → puts the term in the search box
   const handleGroupFilter = useCallback((term: string) => setFilter(term), []);
 
+  // Scroll to the selected country section, compensating for the sticky header
+  const handleCountrySelect = useCallback((code: string) => {
+    setActiveCode(code);
+    const section = document.getElementById(`section-${code}`);
+    if (section) {
+      const y = section.getBoundingClientRect().top + window.scrollY - headerHeight;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  }, [headerHeight]);
+
   return (
     <div className="min-h-screen bg-ios-gray6 dark:bg-black">
       {/* ── Sticky top bar ── */}
@@ -102,7 +112,7 @@ export default function AlbumPage() {
           <CountrySelector
             teams={TEAMS}
             active={activeCode}
-            onSelect={setActiveCode}
+            onSelect={handleCountrySelect}
             onGroupFilter={handleGroupFilter}
           />
         )}

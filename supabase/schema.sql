@@ -88,7 +88,7 @@ create table if not exists public.user_cards (
   id          uuid        default gen_random_uuid() primary key,
   user_id     uuid        references auth.users(id) on delete cascade not null,
   card_id     text        not null
-                          check (card_id ~ '^[A-Z]{2,5}[0-9]{0,3}$'),   -- valida formato (ej: FWC, MEX1, CC14)
+                          check (card_id ~ '^([A-Z]{2,5}[0-9]{0,3}|00)$'),   -- valida formato (ej: 00, FWC1, MEX1, CC14)
   quantity    integer     default 0 not null check (quantity >= 0),
   updated_at  timestamptz default now() not null,
   constraint  uq_user_card unique (user_id, card_id)

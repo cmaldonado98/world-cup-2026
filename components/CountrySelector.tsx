@@ -30,7 +30,6 @@ export function CountrySelector({ teams, active, onSelect, onGroupFilter }: Coun
     onSelect(code);
     const el = scrollRef.current?.querySelector<HTMLButtonElement>(`[data-code="${code}"]`);
     el?.scrollIntoView({ inline: 'center', behavior: 'smooth', block: 'nearest' });
-    document.getElementById(`section-${code}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const handleGroupClick = (firstCode: string) => {
