@@ -7,7 +7,7 @@ import { getTeamStickers   } from '@/lib/data/teams';
 import type { CardMap      } from '@/contexts/AlbumContext';
 
 // ── Status filter type (exported so album/page can import it) ─────────────────
-export type StatusFilter = 'all' | 'missing' | 'duplicates';
+export type StatusFilter = 'all' | 'missing' | 'duplicates' | 'especiales';
 
 // ── Country section ────────────────────────────────────────────────────────────
 
@@ -37,11 +37,14 @@ const CountrySection = memo(function CountrySection({
   // Filter stickers to only those matching the active status filter
   const visibleStickers = useMemo(() => {
     switch (statusFilter) {
-      case 'missing':    return allStickers.filter(id => !(cardMap[id]));
-      case 'duplicates': return allStickers.filter(id => (cardMap[id] ?? 0) > 1);
-      default:           return allStickers;
+      case 'missing':     return allStickers.filter(id => !(cardMap[id]));
+      case 'duplicates':  return allStickers.filter(id => (cardMap[id] ?? 0) > 1);
+      case 'especiales':  return team.code === 'FWC'
+                            ? allStickers                            // 00 + FWC1–FWC19 completos
+                            : allStickers.slice(0, 1);              // solo el cromo nº1 de cada país
+      default:            return allStickers;
     }
-  }, [allStickers, statusFilter, cardMap]);
+  }, [allStickers, statusFilter, cardMap, team.code]);
 
   useEffect(() => {
     if (visibleStickers.length === 0) return;

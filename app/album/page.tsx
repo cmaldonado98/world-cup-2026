@@ -16,6 +16,7 @@ const ScanModal = dynamic(() => import('@/components/ScanModal'), { ssr: false }
 
 const STATUS_CHIPS: { value: StatusFilter; label: string }[] = [
   { value: 'all',        label: 'Todos'      },
+  { value: 'especiales', label: '⭐ Especiales' },
   { value: 'missing',    label: 'Faltantes'  },
   { value: 'duplicates', label: 'Repetidas'  },
 ];
