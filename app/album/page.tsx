@@ -45,6 +45,20 @@ export default function AlbumPage() {
     return () => ro.disconnect();
   }, []);
 
+  // Navigate from home carousel: scroll to the target team once header is measured
+  useEffect(() => {
+    if (headerHeight === 0) return;
+    const code = sessionStorage.getItem('album_scrollTo');
+    if (!code) return;
+    sessionStorage.removeItem('album_scrollTo');
+    setActiveCode(code);
+    const section = document.getElementById(`section-${code}`);
+    if (section) {
+      const y = section.getBoundingClientRect().top + window.scrollY - headerHeight;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  }, [headerHeight]);
+
   const handleLongPress = useCallback((id: string) => setContextCard(id), []);
   const handleCloseMenu = useCallback(() => setContextCard(null), []);
 
