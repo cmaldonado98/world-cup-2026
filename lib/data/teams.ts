@@ -16,7 +16,7 @@ export interface Team {
 // ── Album order: FWC → Groups A-L (4 teams each) → CC ─────────────────────────
 export const TEAMS: readonly Team[] = [
   // ── Especiales ────────────────────────────────────────────
-  // FWC: Logo sticker ("FWC") + FWC1–FWC19 = 20 stickers
+  // FWC: Logo sticker ("00") + FWC1–FWC19 = 20 stickers
   { code: 'FWC', name: 'FIFA World Cup 2026', flag: '🏆', confederation: 'FIFA',     stickerCount: 20, group: 'Especiales' },
 
   // ── Grupo A ───────────────────────────────────────────────
@@ -97,12 +97,12 @@ export const TEAMS: readonly Team[] = [
 
 /**
  * All sticker IDs for a section.
- * FWC is special: first sticker is "FWC" (logo), then FWC1–FWC19.
+ * FWC is special: first sticker is "00" (logo), then FWC1–FWC19.
  * All other sections: CODE1–CODE{stickerCount}.
  */
 export function getTeamStickers(team: Team): string[] {
   if (team.code === 'FWC') {
-    return ['FWC', ...Array.from({ length: 19 }, (_, i) => `FWC${i + 1}`)];
+    return ['00', ...Array.from({ length: 19 }, (_, i) => `FWC${i + 1}`)];
   }
   return Array.from({ length: team.stickerCount }, (_, i) => `${team.code}${i + 1}`);
 }

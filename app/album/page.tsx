@@ -16,6 +16,7 @@ const ScanModal = dynamic(() => import('@/components/ScanModal'), { ssr: false }
 
 const STATUS_CHIPS: { value: StatusFilter; label: string }[] = [
   { value: 'all',        label: 'Todos'      },
+  { value: 'especiales', label: '⭐ Especiales' },
   { value: 'missing',    label: 'Faltantes'  },
   { value: 'duplicates', label: 'Repetidas'  },
 ];
@@ -44,11 +45,35 @@ export default function AlbumPage() {
     return () => ro.disconnect();
   }, []);
 
+  // Navigate from home carousel: scroll to the target team once header is measured
+  useEffect(() => {
+    if (headerHeight === 0) return;
+    const code = sessionStorage.getItem('album_scrollTo');
+    if (!code) return;
+    sessionStorage.removeItem('album_scrollTo');
+    setActiveCode(code);
+    const section = document.getElementById(`section-${code}`);
+    if (section) {
+      const y = section.getBoundingClientRect().top + window.scrollY - headerHeight;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  }, [headerHeight]);
+
   const handleLongPress = useCallback((id: string) => setContextCard(id), []);
   const handleCloseMenu = useCallback(() => setContextCard(null), []);
 
   // Called by CountrySelector group chips → puts the term in the search box
   const handleGroupFilter = useCallback((term: string) => setFilter(term), []);
+
+  // Scroll to the selected country section, compensating for the sticky header
+  const handleCountrySelect = useCallback((code: string) => {
+    setActiveCode(code);
+    const section = document.getElementById(`section-${code}`);
+    if (section) {
+      const y = section.getBoundingClientRect().top + window.scrollY - headerHeight;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  }, [headerHeight]);
 
   return (
     <div className="min-h-screen bg-ios-gray6 dark:bg-black">
@@ -102,7 +127,7 @@ export default function AlbumPage() {
           <CountrySelector
             teams={TEAMS}
             active={activeCode}
-            onSelect={setActiveCode}
+            onSelect={handleCountrySelect}
             onGroupFilter={handleGroupFilter}
           />
         )}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import type { GroupProgressItem } from '@/contexts/AlbumContext';
 
 interface GroupProgressCarouselProps {
@@ -21,9 +22,12 @@ function ProgressBar({ percentage, color }: { percentage: number; color: string 
   );
 }
 
-function TeamCard({ team, color }: { team: GroupProgressItem; color: string }) {
+function TeamCard({ team, color, onClick }: { team: GroupProgressItem; color: string; onClick: () => void }) {
   return (
-    <div className="flex-shrink-0 snap-start w-32 rounded-2xl bg-white dark:bg-[#1C1C1E] shadow-ios-card p-3">
+    <button
+      onClick={onClick}
+      className="flex-shrink-0 snap-start w-32 rounded-2xl bg-white dark:bg-[#1C1C1E] shadow-ios-card p-3 text-left tap-scale active:scale-95 transition-transform"
+    >
       <span className="text-2xl leading-none">{team.flag}</span>
       <p className="text-xs font-semibold text-gray-900 dark:text-white mt-1 truncate">
         {team.name}
@@ -35,7 +39,7 @@ function TeamCard({ team, color }: { team: GroupProgressItem; color: string }) {
       <p className="text-xs font-bold mt-1 text-right" style={{ color }}>
         {team.percentage}%
       </p>
-    </div>
+    </button>
   );
 }
 
@@ -43,6 +47,8 @@ export function GroupProgressCarousel({
   groupProgress,
   topN = 5,
 }: GroupProgressCarouselProps) {
+  const router = useRouter();
+
   // Only national teams (groups A-L), exclude Especiales and CocaCola
   const nationalTeams = useMemo(
     () => groupProgress.filter(t => t.group.length === 1),
@@ -61,6 +67,11 @@ export function GroupProgressCarousel({
     [nationalTeams, topN]
   );
 
+  const handleTeamClick = (code: string) => {
+    sessionStorage.setItem('album_scrollTo', code);
+    router.push('/album');
+  };
+
   if (nationalTeams.length === 0) return null;
 
   return (
@@ -72,7 +83,7 @@ export function GroupProgressCarousel({
           </p>
           <div className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory scrollbar-none">
             {topTeams.map(team => (
-              <TeamCard key={team.code} team={team} color="#34C759" />
+              <TeamCard key={team.code} team={team} color="#34C759" onClick={() => handleTeamClick(team.code)} />
             ))}
           </div>
         </div>
@@ -84,7 +95,7 @@ export function GroupProgressCarousel({
           </p>
           <div className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory scrollbar-none">
             {bottomTeams.map(team => (
-              <TeamCard key={team.code} team={team} color="#FF3B30" />
+              <TeamCard key={team.code} team={team} color="#FF3B30" onClick={() => handleTeamClick(team.code)} />
             ))}
           </div>
         </div>

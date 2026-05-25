@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
     const verts    = curr.boundingPoly?.vertices ?? [];
 
     // Case A: single complete code
-    if (/^[A-Z]{2,4}\d{1,2}$/.test(currText) || currText === 'FWC') {
+    if (/^[A-Z]{2,4}\d{1,2}$/.test(currText) || currText === '00') {
       if (!seenCodes.has(currText)) {
         detectedCodes.push({ code: currText, ...centerOf(verts) });
         seenCodes.add(currText);
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
   }
 
   // ── Regex fallback on full-text block (no positional data, px/py = 0) ────
-  const STICKER_RE = /\b([A-Z]{2,4}) ?(\d{1,2})\b|\b(FWC)\b/g;
+  const STICKER_RE = /\b([A-Z]{2,4}) ?(\d{1,2})\b|\b(00)\b/g;
   for (const m of fullText.matchAll(STICKER_RE)) {
     const code = m[3] ?? `${m[1]}${m[2]}`;
     if (!seenCodes.has(code)) {
