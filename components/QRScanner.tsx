@@ -4,10 +4,19 @@
 // Only import this component via next/dynamic with ssr: false.
 import { useEffect, useRef } from 'react';
 import type { Html5Qrcode as Html5QrcodeType } from 'html5-qrcode';
+import { decodeQR, isFiguritasQR, decodeFiguritasQRToStickers } from '@/utils/qrDecoder';
 
 interface QRScannerProps {
-  onScan:  (text: string) => void;
+  onScan:  (text: string, metadata?: QRScanMetadata) => void;
   onError?: (err: string) => void;
+}
+
+export interface QRScanMetadata {
+  source: 'native' | 'figuritas';
+  figuritasData?: {
+    faltantes: string[];
+    repetidos: string[];
+  };
 }
 
 export default function QRScanner({ onScan, onError }: QRScannerProps) {
@@ -37,7 +46,30 @@ export default function QRScanner({ onScan, onError }: QRScannerProps) {
       const config = { fps: 12, qrbox: { width: 240, height: 240 } };
       const onSuccess = (decoded: string) => {
         stopScanner();
-        onScan(decoded);
+        
+        // Detectar y procesar códigos QR de Figuritas
+        if (isFiguritasQR(decoded)) {
+          try {
+            const { faltantes, repetidos } = decodeFiguritasQRToStickers(decoded);
+            console.log('[QRScanner] QR de Figuritas detectado:', { faltantes, repetidos });
+            
+            // Pasar metadata con los datos decodificados
+            onScan(decoded, {
+              source: 'figuritas',
+              figuritasData: { faltantes, repetidos },
+            });
+          } catch (error) {
+            console.error('[QRScanner] Error decodificando QR de Figuritas:', error);
+            onError?.(
+              error instanceof Error 
+                ? `Error al leer QR de Figuritas: ${error.message}` 
+                : 'Error al procesar QR de Figuritas'
+            );
+          }
+        } else {
+          // QR nativo de la app
+          onScan(decoded, { source: 'native' });
+        }
       };
 
       try {
