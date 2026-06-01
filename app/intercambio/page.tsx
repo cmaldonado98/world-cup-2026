@@ -341,7 +341,7 @@ export default function IntercambioPage() {
 
       {/* ── Phase: Match results ── */}
       {phase === 'matching' && (
-        <div className="flex flex-col h-[calc(100vh-140px)]">
+        <div className="flex flex-col h-full">
           {fetching ? (
             <div className="flex flex-col items-center gap-3 py-20">
               <Loader2 size={32} className="text-ios-blue animate-spin" />
@@ -350,7 +350,7 @@ export default function IntercambioPage() {
           ) : match ? (
             <>
               {/* Área de scroll con las dos columnas */}
-              <div className="flex-1 overflow-y-auto pb-4">
+              <div className="flex-1 overflow-y-auto pb-28">
                 {match.iCanGive.length === 0 && match.theyGive.length === 0 ? (
                   <div className="text-center py-16 px-4">
                     <p className="text-4xl mb-3">🤝</p>
@@ -386,18 +386,30 @@ export default function IntercambioPage() {
                 )}
               </div>
 
-              {/* Botón fijo en la parte inferior */}
+              {/* Botón flotante redondo */}
               {(match.iCanGive.length > 0 || match.theyGive.length > 0) && (
-                <div className="absolute bottom-16 left-0 right-0 bg-white dark:bg-[#1C1C1E] border-t border-ios-gray5 dark:border-[#3A3A3C] px-4 py-4">
-                  <button
-                    onClick={handleOpenConfirmModal}
-                    disabled={selectedToGive.size === 0 && selectedToReceive.size === 0}
-                    className="w-full bg-ios-blue text-white font-semibold text-sm py-3.5 rounded-2xl tap-scale shadow-ios-card
-                               disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                <button
+                  onClick={handleOpenConfirmModal}
+                  disabled={selectedToGive.size === 0 && selectedToReceive.size === 0}
+                  className="fixed bottom-24 right-4 z-40 w-16 h-16 bg-ios-blue text-white rounded-full shadow-lg
+                             flex items-center justify-center tap-scale transition-all
+                             disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Intercambiar"
+                >
+                  <svg 
+                    className="w-7 h-7" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
                   >
-                    Intercambiar
-                  </button>
-                </div>
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2.5} 
+                      d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" 
+                    />
+                  </svg>
+                </button>
               )}
             </>
           ) : null}
