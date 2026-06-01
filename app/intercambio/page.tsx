@@ -39,13 +39,16 @@ function computeMatch(myCards: CardMap, theirCards: CardMap): Omit<MatchResult, 
 
 // ── Component ──────────────────────────────────────────────────────────────────
 export default function IntercambioPage() {
-  const { user, cardMap } = useAlbum();
+  const { user, cardMap, incrementCard, decrementCard } = useAlbum();
 
   const [phase,    setPhase]    = useState<ScanPhase>('qr');
   const [match,    setMatch]    = useState<MatchResult | null>(null);
-  const [matchTab, setMatchTab] = useState<0 | 1>(0);
   const [fetching, setFetching] = useState(false);
   const [errMsg,   setErrMsg]   = useState('');
+  
+  // Estados para selección de cromos a intercambiar
+  const [selectedToGive, setSelectedToGive] = useState<Set<string>>(new Set());
+  const [selectedToReceive, setSelectedToReceive] = useState<Set<string>>(new Set());
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
 
@@ -53,6 +56,8 @@ export default function IntercambioPage() {
     setFetching(true);
     setPhase('matching');
     setErrMsg('');
+    setSelectedToGive(new Set());
+    setSelectedToReceive(new Set());
 
     // Manejar códigos QR de Figuritas
     if (metadata?.source === 'figuritas' && metadata.figuritasData) {
@@ -113,6 +118,50 @@ export default function IntercambioPage() {
     const { iCanGive, theyGive } = computeMatch(cardMap, theirCards);
     setMatch({ theirId, iCanGive, theyGive });
   }, [cardMap]);
+
+  const handleCompleteExchange = useCallback(() => {
+    if (!match) return;
+    
+    // Decrementar los cromos que doy
+    selectedToGive.forEach(stickerId => {
+      decrementCard(stickerId);
+    });
+    
+    // Incrementar los cromos que recibo
+    selectedToReceive.forEach(stickerId => {
+      incrementCard(stickerId);
+    });
+    
+    // Resetear y volver al inicio
+    setMatch(null);
+    setSelectedToGive(new Set());
+    setSelectedToReceive(new Set());
+    setPhase('qr');
+  }, [match, selectedToGive, selectedToReceive, incrementCard, decrementCard]);
+
+  const toggleGiveSelection = useCallback((stickerId: string) => {
+    setSelectedToGive(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(stickerId)) {
+        newSet.delete(stickerId);
+      } else {
+        newSet.add(stickerId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  const toggleReceiveSelection = useCallback((stickerId: string) => {
+    setSelectedToReceive(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(stickerId)) {
+        newSet.delete(stickerId);
+      } else {
+        newSet.add(stickerId);
+      }
+      return newSet;
+    });
+  }, []);
 
   const shareOrCopy = async (title: string, text: string) => {
     if (navigator.share) {
@@ -286,7 +335,7 @@ export default function IntercambioPage() {
 
       {/* ── Phase: Match results ── */}
       {phase === 'matching' && (
-        <div className="px-4 py-4 flex flex-col gap-4">
+        <div className="flex flex-col h-[calc(100vh-80px)]">
           {fetching ? (
             <div className="flex flex-col items-center gap-3 py-20">
               <Loader2 size={32} className="text-ios-blue animate-spin" />
@@ -294,26 +343,56 @@ export default function IntercambioPage() {
             </div>
           ) : match ? (
             <>
-              {/* iOS Segmented control */}
-              <div className="flex bg-ios-gray5 dark:bg-[#2C2C2E] rounded-xl p-1">
-                {(['Lo que le doy', 'Lo que me da'] as const).map((label, i) => (
-                  <button
-                    key={label}
-                    onClick={() => setMatchTab(i as 0 | 1)}
-                    className={[
-                      'flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all tap-scale',
-                      matchTab === i
-                        ? 'segmented-active text-gray-900'
-                        : 'text-ios-gray',
-                    ].join(' ')}
-                  >
-                    {label} ({i === 0 ? match.iCanGive.length : match.theyGive.length})
-                  </button>
-                ))}
+              {/* Área de scroll con las dos columnas */}
+              <div className="flex-1 overflow-y-auto pb-24">
+                {match.iCanGive.length === 0 && match.theyGive.length === 0 ? (
+                  <div className="text-center py-16 px-4">
+                    <p className="text-4xl mb-3">🤝</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">Sin coincidencias</p>
+                    <p className="text-xs text-ios-gray mt-1">No hay cromos para intercambiar</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2 px-2 py-4">
+                    {/* Columna izquierda: Lo que doy */}
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-bold text-center text-ios-gray uppercase sticky top-0 bg-ios-gray6 dark:bg-black py-2 z-10">
+                        Yo doy ({selectedToGive.size})
+                      </h3>
+                      <StickerList
+                        stickers={match.iCanGive}
+                        selected={selectedToGive}
+                        onToggle={toggleGiveSelection}
+                      />
+                    </div>
+                    
+                    {/* Columna derecha: Lo que recibo */}
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-bold text-center text-ios-gray uppercase sticky top-0 bg-ios-gray6 dark:bg-black py-2 z-10">
+                        Yo recibo ({selectedToReceive.size})
+                      </h3>
+                      <StickerList
+                        stickers={match.theyGive}
+                        selected={selectedToReceive}
+                        onToggle={toggleReceiveSelection}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Results list */}
-              <MatchList ids={matchTab === 0 ? match.iCanGive : match.theyGive} />
+              {/* Botón fijo en la parte inferior */}
+              {(match.iCanGive.length > 0 || match.theyGive.length > 0) && (
+                <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#1C1C1E] border-t border-ios-gray5 dark:border-[#3A3A3C] px-4 py-4 safe-area-bottom">
+                  <button
+                    onClick={handleCompleteExchange}
+                    disabled={selectedToGive.size === 0 && selectedToReceive.size === 0}
+                    className="w-full bg-ios-blue text-white font-semibold text-sm py-3.5 rounded-2xl tap-scale shadow-ios-card
+                               disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                  >
+                    Completar intercambio
+                  </button>
+                </div>
+              )}
             </>
           ) : null}
         </div>
@@ -323,29 +402,81 @@ export default function IntercambioPage() {
 }
 
 // ── Match list sub-component ────────────────────────────────────────────────
-function MatchList({ ids }: { ids: string[] }) {
-  if (ids.length === 0) {
+interface StickerListProps {
+  stickers: string[];
+  selected: Set<string>;
+  onToggle: (stickerId: string) => void;
+}
+
+function StickerList({ stickers, selected, onToggle }: StickerListProps) {
+  if (stickers.length === 0) {
     return (
-      <div className="text-center py-16">
-        <p className="text-4xl mb-3">🤝</p>
-        <p className="text-sm font-semibold text-gray-900 dark:text-white">Sin coincidencias</p>
-        <p className="text-xs text-ios-gray mt-1">No hay cromos para intercambiar aquí</p>
+      <div className="text-center py-8">
+        <p className="text-2xl mb-2">—</p>
+        <p className="text-[10px] text-ios-gray">Sin cromos</p>
       </div>
     );
   }
 
+  // Agrupar cromos por equipo manteniendo el orden del álbum
+  const stickersByTeam: Map<string, string[]> = new Map();
+  
+  for (const stickerId of stickers) {
+    const teamCode = stickerId.match(/^[A-Z]+/)?.[0] || 'FWC';
+    if (!stickersByTeam.has(teamCode)) {
+      stickersByTeam.set(teamCode, []);
+    }
+    stickersByTeam.get(teamCode)!.push(stickerId);
+  }
+
+  // Ordenar equipos según el orden del álbum
+  const orderedTeams: Array<{ code: string; stickers: string[] }> = [];
+  for (const team of TEAMS) {
+    const teamStickers = stickersByTeam.get(team.code);
+    if (teamStickers && teamStickers.length > 0) {
+      orderedTeams.push({ code: team.code, stickers: teamStickers });
+    }
+  }
+
   return (
-    <div className="flex flex-wrap gap-2">
-      {ids.map(id => (
-        <span
-          key={id}
-          className="bg-white dark:bg-[#1C1C1E] border border-ios-gray5 dark:border-[#3A3A3C]
-                     text-gray-900 dark:text-white text-xs font-semibold
-                     rounded-xl px-3 py-2 shadow-ios-card"
-        >
-          {id}
-        </span>
-      ))}
+    <div className="space-y-3">
+      {orderedTeams.map(({ code, stickers: teamStickers }) => {
+        const team = TEAMS.find(t => t.code === code);
+        if (!team) return null;
+
+        return (
+          <div key={code} className="space-y-1">
+            {/* Header del equipo */}
+            <div className="flex items-center gap-1.5 px-2">
+              <span className="text-base">{team.flag}</span>
+              <span className="text-[10px] font-semibold text-gray-900 dark:text-white truncate">
+                {team.name}
+              </span>
+            </div>
+            
+            {/* Lista de cromos del equipo */}
+            <div className="space-y-1">
+              {teamStickers.map(stickerId => {
+                const isSelected = selected.has(stickerId);
+                return (
+                  <button
+                    key={stickerId}
+                    onClick={() => onToggle(stickerId)}
+                    className={`w-full flex items-center justify-center px-3 py-2 rounded-lg 
+                               font-semibold text-xs transition-all tap-scale
+                               ${isSelected 
+                                 ? 'bg-[#34C759] dark:bg-[#32D74B] text-white border-2 border-[#34C759] dark:border-[#32D74B]' 
+                                 : 'bg-white dark:bg-[#1C1C1E] text-gray-900 dark:text-white border-2 border-ios-gray5 dark:border-[#3A3A3C] hover:bg-ios-gray6 dark:hover:bg-[#2C2C2E]'
+                               }`}
+                  >
+                    {stickerId}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
