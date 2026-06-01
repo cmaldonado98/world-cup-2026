@@ -63,15 +63,20 @@ export function EditSwapsModal({
       {/* Backdrop */}
       <div
         onClick={handleBackdropClick}
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 animate-fade-in flex items-center justify-center"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 animate-fade-in flex items-center justify-center select-none"
         aria-hidden="true"
+        style={{ 
+          WebkitUserSelect: 'none',
+          WebkitTouchCallout: 'none',
+          userSelect: 'none'
+        }}
       >
         {/* Modal Card */}
         <div
           role="dialog"
           aria-modal="true"
           aria-label={`Editar repetidas de ${cardId}`}
-          className="w-[90%] max-w-sm bg-white dark:bg-[#1C1C1E] rounded-3xl shadow-2xl animate-scale-in overflow-hidden"
+          className="w-[90%] max-w-sm bg-white dark:bg-[#1C1C1E] rounded-3xl shadow-2xl animate-scale-in overflow-hidden select-none"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}

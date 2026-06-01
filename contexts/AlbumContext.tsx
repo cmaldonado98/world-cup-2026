@@ -23,10 +23,12 @@ interface AlbumState {
   cardMap: CardMap;
   user:    User | null;
   loading: boolean;
+  userCreatedAt: string | null;
 }
 
 type Action =
   | { type: 'SET_USER';    user:    User | null }
+  | { type: 'SET_USER_CREATED_AT'; createdAt: string | null }
   | { type: 'LOAD_CARDS';  cards:   CardMap }
   | { type: 'SET_LOADING'; loading: boolean }
   | { type: 'UPDATE_CARD'; cardId:  string; quantity: number };
@@ -46,6 +48,7 @@ export interface AlbumContextValue {
   user:          User | null;
   loading:       boolean;
   todayAdded:    number;
+  daysCollecting: number | null;
   incrementCard: (cardId: string) => void;
   decrementCard: (cardId: string) => void;
   removeCard:    (cardId: string) => void;
@@ -79,6 +82,8 @@ function reducer(state: AlbumState, action: Action): AlbumState {
   switch (action.type) {
     case 'SET_USER':
       return { ...state, user: action.user };
+    case 'SET_USER_CREATED_AT':
+      return { ...state, userCreatedAt: action.createdAt };
     case 'LOAD_CARDS':
       return { ...state, cardMap: action.cards, loading: false };
     case 'SET_LOADING':
@@ -113,6 +118,7 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
     cardMap: {},
     user:    null,
     loading: true,
+    userCreatedAt: null,
   });
 
   // Keep a ref so callbacks always read the latest value without re-creating
@@ -159,16 +165,23 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
     // Initial session check — explicit type avoids implicit-any with untyped SSR client
     supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => {
       dispatch({ type: 'SET_USER', user: data.session?.user ?? null });
-      if (data.session?.user) pullFromSupabase(data.session.user.id);
+      if (data.session?.user) {
+        pullFromSupabase(data.session.user.id);
+        fetchUserCreatedAt(data.session.user.id);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event: AuthChangeEvent, session: Session | null) => {
       dispatch({ type: 'SET_USER', user: session?.user ?? null });
-      if (session?.user) pullFromSupabase(session.user.id);
+      if (session?.user) {
+        pullFromSupabase(session.user.id);
+        fetchUserCreatedAt(session.user.id);
+      }
       if (!session) {
         // Logged out – clear remote data but keep nothing (stale local stays)
         dispatch({ type: 'LOAD_CARDS', cards: {} });
+        dispatch({ type: 'SET_USER_CREATED_AT', createdAt: null });
         localStorage.removeItem(LS_KEY);
       }
     });
@@ -191,6 +204,17 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
     }
     dispatch({ type: 'LOAD_CARDS', cards });
     try { localStorage.setItem(LS_KEY, JSON.stringify(cards)); } catch { /* quota */ }
+  }
+
+  async function fetchUserCreatedAt(userId: string) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('created_at')
+      .eq('id', userId)
+      .single();
+
+    if (error || !data) return;
+    dispatch({ type: 'SET_USER_CREATED_AT', createdAt: data.created_at });
   }
 
   // ── 4. Debounced Supabase sync (fire-and-forget) ────────────────────────────
@@ -276,7 +300,17 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
     [syncToSupabase]
   );
 
-  // ── 6. Derived stats ────────────────────────────────────────────────────────
+  // ── 6. Calculate days collecting ────────────────────────────────────────────
+  const daysCollecting = useMemo(() => {
+    if (!state.userCreatedAt) return null;
+    const created = new Date(state.userCreatedAt);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - created.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  }, [state.userCreatedAt]);
+
+  // ── 7. Derived stats ────────────────────────────────────────────────────────
   const stats = useMemo(() => {
     const cardMap    = state.cardMap;
     const entries    = Object.entries(cardMap);
@@ -344,6 +378,7 @@ export function AlbumProvider({ children }: { children: React.ReactNode }) {
         user:       state.user,
         loading:    state.loading,
         todayAdded,
+        daysCollecting,
         incrementCard,
         decrementCard,
         removeCard,

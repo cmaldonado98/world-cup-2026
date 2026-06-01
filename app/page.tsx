@@ -7,9 +7,10 @@ import { HowToCollapsible } from '@/components/HowToCollapsible';
 import { GroupProgressCarousel } from '@/components/GroupProgressCarousel';
 import { SpecialsProgress } from '@/components/SpecialsProgress';
 import { TradePowerCard, CuriosityCards } from '@/components/CuriosityCards';
+import { DaysCollectingCard } from '@/components/DaysCollectingCard';
 
 export default function DashboardPage() {
-  const { loading, stats, todayAdded } = useAlbum();
+  const { loading, stats, todayAdded, daysCollecting } = useAlbum();
 
   return (
     <div className="min-h-screen bg-ios-gray6 dark:bg-black flex flex-col">
@@ -51,6 +52,13 @@ export default function DashboardPage() {
           />
         )}
       </section>
+
+      {/* ── Days collecting ── */}
+      {!loading && daysCollecting !== null && (
+        <section className="pb-4">
+          <DaysCollectingCard days={daysCollecting} />
+        </section>
+      )}
 
       {/* ── Detailed progress (normals vs specials) ── */}
       {!loading && (

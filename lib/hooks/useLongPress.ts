@@ -31,6 +31,11 @@ export function useLongPress(
     if (timerRef.current) clearTimeout(timerRef.current);
   }, []);
 
+  // Prevent text selection on long press
+  const handleContextMenu = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+  }, []);
+
   // onClick fires after mouseup/touchend – only run if it wasn't a long press
   const click = useCallback(() => {
     if (!firedRef.current) onPress?.();
@@ -44,5 +49,6 @@ export function useLongPress(
     onTouchEnd:   cancel,
     onTouchMove:  cancel, // scrolling cancels the timer
     onClick:      click,
+    onContextMenu: handleContextMenu, // prevent context menu
   } as const;
 }
