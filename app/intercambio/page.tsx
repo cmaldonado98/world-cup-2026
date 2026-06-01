@@ -8,6 +8,7 @@ import { useAlbum   } from '@/contexts/AlbumContext';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import type { CardMap } from '@/contexts/AlbumContext';
 import { getAllStickers, TEAMS, GROUPS } from '@/lib/data/teams';
+import type { QRScanMetadata } from '@/components/QRScanner';
 
 // Load scanner only on the client – html5-qrcode touches window/navigator
 const QRScanner = dynamic(() => import('@/components/QRScanner'), { ssr: false });
@@ -48,14 +49,47 @@ export default function IntercambioPage() {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
 
-  const handleScan = useCallback(async (text: string) => {
-    // Expect URL format: https://domain/share/[userId]
-    const match = text.match(/\/share\/([a-f0-9-]{36})/i);
-    if (!match) { setErrMsg('QR no reconocido'); return; }
-
-    const theirId = match[1];
+  const handleScan = useCallback(async (text: string, metadata?: QRScanMetadata) => {
     setFetching(true);
     setPhase('matching');
+    setErrMsg('');
+
+    // Manejar códigos QR de Figuritas
+    if (metadata?.source === 'figuritas' && metadata.figuritasData) {
+      const { faltantes, repetidos } = metadata.figuritasData;
+      
+      // Reconstruir el CardMap de la otra persona basado en faltantes y repetidos
+      const allStickers = getAllStickers();
+      const theirCards: CardMap = {};
+      
+      for (const stickerId of allStickers) {
+        if (repetidos.includes(stickerId)) {
+          // Si está en repetidos, asumimos que tienen al menos 2
+          theirCards[stickerId] = 2;
+        } else if (!faltantes.includes(stickerId)) {
+          // Si no está en faltantes ni en repetidos, tienen exactamente 1
+          theirCards[stickerId] = 1;
+        }
+        // Si está en faltantes, no lo agregamos al map (cantidad = 0)
+      }
+
+      const { iCanGive, theyGive } = computeMatch(cardMap, theirCards);
+      setMatch({ theirId: 'figuritas-user', iCanGive, theyGive });
+      setFetching(false);
+      return;
+    }
+
+    // Manejar códigos QR nativos (URL con userId)
+    // Expect URL format: https://domain/share/[userId]
+    const match = text.match(/\/share\/([a-f0-9-]{36})/i);
+    if (!match) { 
+      setErrMsg('QR no reconocido'); 
+      setFetching(false);
+      setPhase('scanning');
+      return; 
+    }
+
+    const theirId = match[1];
 
     const { data, error } = await getSupabaseClient()
       .from('user_cards')

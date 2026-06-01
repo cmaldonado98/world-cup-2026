@@ -7,7 +7,7 @@ import { useAlbum         } from '@/contexts/AlbumContext';
 import { CardGrid          } from '@/components/CardGrid';
 import type { StatusFilter } from '@/components/CardGrid';
 import { CountrySelector   } from '@/components/CountrySelector';
-import { ContextMenu       } from '@/components/ContextMenu';
+import { EditSwapsModal    } from '@/components/EditSwapsModal';
 import { TEAMS             } from '@/lib/data/teams';
 import { useTeamSearch     } from '@/lib/hooks/useTeamSearch';
 
@@ -61,6 +61,24 @@ export default function AlbumPage() {
 
   const handleLongPress = useCallback((id: string) => setContextCard(id), []);
   const handleCloseMenu = useCallback(() => setContextCard(null), []);
+
+  // Save new quantity from the swaps modal
+  const handleSaveSwaps = useCallback((id: string, newQuantity: number) => {
+    const currentQuantity = cardMap[id] ?? 0;
+    const diff = newQuantity - currentQuantity;
+    
+    if (diff > 0) {
+      // Increment
+      for (let i = 0; i < diff; i++) {
+        incrementCard(id);
+      }
+    } else if (diff < 0) {
+      // Decrement
+      for (let i = 0; i < Math.abs(diff); i++) {
+        decrementCard(id);
+      }
+    }
+  }, [cardMap, incrementCard, decrementCard]);
 
   // Called by CountrySelector group chips → puts the term in the search box
   const handleGroupFilter = useCallback((term: string) => setFilter(term), []);
@@ -152,15 +170,13 @@ export default function AlbumPage() {
         />
       )}
 
-      {/* ── Context menu (action sheet) ── */}
+      {/* ── Edit Swaps Modal ── */}
       {contextCard && (
-        <ContextMenu
+        <EditSwapsModal
           cardId={contextCard}
           quantity={cardMap[contextCard] ?? 0}
           onClose={handleCloseMenu}
-          onIncrement={incrementCard}
-          onDecrement={decrementCard}
-          onRemove={removeCard}
+          onSave={handleSaveSwaps}
         />
       )}
 
