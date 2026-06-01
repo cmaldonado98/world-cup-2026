@@ -13,7 +13,7 @@ interface EditSwapsModalProps {
 export function EditSwapsModal({
   cardId, quantity, onClose, onSave
 }: EditSwapsModalProps) {
-  const [swaps, setSwaps] = useState(Math.max(0, quantity - 1));
+  const [count, setCount] = useState(quantity);
 
   // Lock body scroll while modal is open
   useEffect(() => {
@@ -26,10 +26,10 @@ export function EditSwapsModal({
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') handleDone(); };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [swaps]);
+  }, [count]);
 
   const handleIncrement = () => {
-    setSwaps(prev => prev + 1);
+    setCount(prev => prev + 1);
     // Haptic feedback
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate(50);
@@ -37,7 +37,7 @@ export function EditSwapsModal({
   };
 
   const handleDecrement = () => {
-    setSwaps(prev => Math.max(0, prev - 1));
+    setCount(prev => Math.max(0, prev - 1));
     // Haptic feedback
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       navigator.vibrate(50);
@@ -45,10 +45,9 @@ export function EditSwapsModal({
   };
 
   const handleDone = () => {
-    // Save the new quantity (swaps + 1 for the base card)
-    const newQuantity = swaps + 1;
-    if (newQuantity !== quantity) {
-      onSave(cardId, newQuantity);
+    // Save the new quantity
+    if (count !== quantity) {
+      onSave(cardId, count);
     }
     onClose();
   };
@@ -77,16 +76,15 @@ export function EditSwapsModal({
         >
           {/* Header */}
           <div className="pt-6 pb-2 px-6 border-b border-gray-200/30 dark:border-gray-700/30">
-            <div className="w-12 h-1 bg-gray-300 dark:bg-gray-600 rounded-full mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white text-center">
-              Editar repetidas
+              Editar cromos
             </h2>
           </div>
 
           {/* Content */}
           <div className="px-6 py-8">
             <p className="text-base text-gray-600 dark:text-gray-400 text-center mb-8">
-              ¿Cuántas repetidas tienes de <span className="font-semibold text-gray-900 dark:text-white">"{cardId}"</span>?
+              ¿Cuántos cromos tienes de <span className="font-semibold text-gray-900 dark:text-white">"{cardId}"</span>?
             </p>
 
             {/* Counter Controls */}
@@ -94,17 +92,17 @@ export function EditSwapsModal({
               {/* Decrement Button */}
               <button
                 onClick={handleDecrement}
-                disabled={swaps === 0}
+                disabled={count === 0}
                 className={[
                   'w-14 h-14 rounded-full flex items-center justify-center',
                   'transition-all duration-200 tap-scale',
                   'focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:ring-offset-2',
                   'dark:focus:ring-offset-black',
-                  swaps === 0
+                  count === 0
                     ? 'bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed'
                     : 'bg-[#007AFF] text-white active:scale-90 shadow-lg',
                 ].join(' ')}
-                aria-label="Restar repetida"
+                aria-label="Restar cromo"
               >
                 <Minus size={24} strokeWidth={3} />
               </button>
@@ -112,7 +110,7 @@ export function EditSwapsModal({
               {/* Count Display */}
               <div className="min-w-[80px] flex items-center justify-center">
                 <span className="text-6xl font-bold text-gray-900 dark:text-white tabular-nums">
-                  {swaps}
+                  {count}
                 </span>
               </div>
 
@@ -126,7 +124,7 @@ export function EditSwapsModal({
                   'focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:ring-offset-2',
                   'dark:focus:ring-offset-black',
                 ].join(' ')}
-                aria-label="Sumar repetida"
+                aria-label="Sumar cromo"
               >
                 <Plus size={24} strokeWidth={3} />
               </button>
@@ -134,7 +132,12 @@ export function EditSwapsModal({
 
             {/* Helper text */}
             <p className="text-xs text-gray-500 dark:text-gray-500 text-center mt-2">
-              {swaps === 0 ? 'Sin repetidas' : `${swaps} repetida${swaps > 1 ? 's' : ''}`}
+              {count === 0 
+                ? 'No tienes este cromo' 
+                : count === 1 
+                ? '1 cromo (sin repetidas)' 
+                : `${count} cromos (${count - 1} repetida${count - 1 > 1 ? 's' : ''})`
+              }
             </p>
           </div>
 
