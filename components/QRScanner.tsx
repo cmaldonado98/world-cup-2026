@@ -107,10 +107,6 @@ export default function QRScanner({ onScan, onError }: QRScannerProps) {
   return (
     <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black">
       <div id={divId} className="w-full h-full" />
-      {/* Scanning guide overlay */}
-      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-        <div className="w-56 h-56 border-2 border-white/60 rounded-2xl" />
-      </div>
     </div>
   );
 }

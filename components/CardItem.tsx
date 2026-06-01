@@ -70,6 +70,11 @@ const CardItem = memo(function CardItem({
           ? 'bg-[#34C759] text-white'
           : 'bg-ios-gray5 dark:bg-[#2C2C2E] text-ios-gray dark:text-ios-gray2',
       ].join(' ')}
+      style={{
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
+        userSelect: 'none'
+      }}
     >
       {showTeamCode && (
         <span className="text-[10px] leading-tight opacity-75 mt-0.5">{teamCode}</span>
