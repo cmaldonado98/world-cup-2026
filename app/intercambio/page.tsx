@@ -49,6 +49,7 @@ export default function IntercambioPage() {
   // Estados para selección de cromos a intercambiar
   const [selectedToGive, setSelectedToGive] = useState<Set<string>>(new Set());
   const [selectedToReceive, setSelectedToReceive] = useState<Set<string>>(new Set());
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
 
@@ -119,6 +120,10 @@ export default function IntercambioPage() {
     setMatch({ theirId, iCanGive, theyGive });
   }, [cardMap]);
 
+  const handleOpenConfirmModal = useCallback(() => {
+    setShowConfirmModal(true);
+  }, []);
+
   const handleCompleteExchange = useCallback(() => {
     if (!match) return;
     
@@ -136,6 +141,7 @@ export default function IntercambioPage() {
     setMatch(null);
     setSelectedToGive(new Set());
     setSelectedToReceive(new Set());
+    setShowConfirmModal(false);
     setPhase('qr');
   }, [match, selectedToGive, selectedToReceive, incrementCard, decrementCard]);
 
@@ -335,7 +341,7 @@ export default function IntercambioPage() {
 
       {/* ── Phase: Match results ── */}
       {phase === 'matching' && (
-        <div className="flex flex-col h-[calc(100vh-80px)]">
+        <div className="flex flex-col h-[calc(100vh-140px)]">
           {fetching ? (
             <div className="flex flex-col items-center gap-3 py-20">
               <Loader2 size={32} className="text-ios-blue animate-spin" />
@@ -344,7 +350,7 @@ export default function IntercambioPage() {
           ) : match ? (
             <>
               {/* Área de scroll con las dos columnas */}
-              <div className="flex-1 overflow-y-auto pb-24">
+              <div className="flex-1 overflow-y-auto pb-4">
                 {match.iCanGive.length === 0 && match.theyGive.length === 0 ? (
                   <div className="text-center py-16 px-4">
                     <p className="text-4xl mb-3">🤝</p>
@@ -382,19 +388,99 @@ export default function IntercambioPage() {
 
               {/* Botón fijo en la parte inferior */}
               {(match.iCanGive.length > 0 || match.theyGive.length > 0) && (
-                <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#1C1C1E] border-t border-ios-gray5 dark:border-[#3A3A3C] px-4 py-4 safe-area-bottom">
+                <div className="absolute bottom-16 left-0 right-0 bg-white dark:bg-[#1C1C1E] border-t border-ios-gray5 dark:border-[#3A3A3C] px-4 py-4">
                   <button
-                    onClick={handleCompleteExchange}
+                    onClick={handleOpenConfirmModal}
                     disabled={selectedToGive.size === 0 && selectedToReceive.size === 0}
                     className="w-full bg-ios-blue text-white font-semibold text-sm py-3.5 rounded-2xl tap-scale shadow-ios-card
                                disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
                   >
-                    Completar intercambio
+                    Intercambiar
                   </button>
                 </div>
               )}
             </>
           ) : null}
+        </div>
+      )}
+
+      {/* Modal de confirmación */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="w-full max-w-md bg-white dark:bg-[#1C1C1E] rounded-3xl shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="px-6 pt-6 pb-4 border-b border-ios-gray5 dark:border-[#3A3A3C]">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white text-center">
+                Confirmar intercambio
+              </h2>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
+              {/* Lo que das */}
+              {selectedToGive.size > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-bold text-ios-gray uppercase mb-2">
+                    Vas a dar ({selectedToGive.size})
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from(selectedToGive).map(stickerId => (
+                      <span
+                        key={stickerId}
+                        className="bg-ios-gray6 dark:bg-[#2C2C2E] text-gray-900 dark:text-white 
+                                   text-xs font-semibold px-3 py-1.5 rounded-lg"
+                      >
+                        {stickerId}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Lo que recibes */}
+              {selectedToReceive.size > 0 && (
+                <div>
+                  <h3 className="text-sm font-bold text-ios-gray uppercase mb-2">
+                    Vas a recibir ({selectedToReceive.size})
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from(selectedToReceive).map(stickerId => (
+                      <span
+                        key={stickerId}
+                        className="bg-[#34C759] dark:bg-[#32D74B] text-white 
+                                   text-xs font-semibold px-3 py-1.5 rounded-lg"
+                      >
+                        {stickerId}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedToGive.size === 0 && selectedToReceive.size === 0 && (
+                <p className="text-center text-ios-gray text-sm py-4">
+                  No has seleccionado ningún cromo
+                </p>
+              )}
+            </div>
+
+            {/* Footer con botones */}
+            <div className="px-6 py-4 border-t border-ios-gray5 dark:border-[#3A3A3C] flex gap-3">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="flex-1 bg-ios-gray5 dark:bg-[#2C2C2E] text-gray-900 dark:text-white 
+                           font-semibold text-sm py-3 rounded-2xl tap-scale"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCompleteExchange}
+                className="flex-1 bg-ios-blue text-white font-semibold text-sm py-3 rounded-2xl tap-scale"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
