@@ -43,7 +43,7 @@ export default function QRScanner({ onScan, onError }: QRScannerProps) {
 
       scannerRef.current = new Html5Qrcode(divId);
       
-      const config = { fps: 12, qrbox: { width: 240, height: 240 } };
+      const config = { fps: 12 };
       const onSuccess = (decoded: string) => {
         stopScanner();
         
