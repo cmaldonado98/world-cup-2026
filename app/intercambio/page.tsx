@@ -349,6 +349,28 @@ export default function IntercambioPage() {
             </div>
           ) : match ? (
             <>
+              {/* Contadores superiores */}
+              <div className="px-4 pt-2 pb-4 bg-white dark:bg-[#1C1C1E] border-b border-ios-gray5 dark:border-[#3A3A3C]">
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Contador total de lo que doy */}
+                  <div className="bg-ios-gray6 dark:bg-[#2C2C2E] rounded-xl p-3 text-center">
+                    <p className="text-xs text-ios-gray uppercase font-semibold mb-1">Total Doy</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{match.iCanGive.length}</p>
+                  </div>
+                  {/* Contador total de lo que recibo */}
+                  <div className="bg-ios-gray6 dark:bg-[#2C2C2E] rounded-xl p-3 text-center">
+                    <p className="text-xs text-ios-gray uppercase font-semibold mb-1">Total Recibo</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{match.theyGive.length}</p>
+                  </div>
+                </div>
+                {/* Contador de seleccionados */}
+                <div className="mt-3 bg-ios-blue/10 dark:bg-ios-blue/20 rounded-xl p-3 text-center">
+                  <p className="text-xs text-ios-blue font-semibold">
+                    Seleccionados: {selectedToGive.size + selectedToReceive.size}/{match.iCanGive.length + match.theyGive.length}
+                  </p>
+                </div>
+              </div>
+
               {/* Área de scroll con las dos columnas */}
               <div className="flex-1 overflow-y-auto pb-28">
                 {match.iCanGive.length === 0 && match.theyGive.length === 0 ? (
@@ -360,7 +382,7 @@ export default function IntercambioPage() {
                 ) : (
                   <div className="grid grid-cols-2 gap-2 px-2 py-4">
                     {/* Columna izquierda: Lo que doy */}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       <h3 className="text-xs font-bold text-center text-ios-gray uppercase sticky top-0 bg-ios-gray6 dark:bg-black py-2 z-10">
                         Yo doy ({selectedToGive.size})
                       </h3>
@@ -372,7 +394,7 @@ export default function IntercambioPage() {
                     </div>
                     
                     {/* Columna derecha: Lo que recibo */}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       <h3 className="text-xs font-bold text-center text-ios-gray uppercase sticky top-0 bg-ios-gray6 dark:bg-black py-2 z-10">
                         Yo recibo ({selectedToReceive.size})
                       </h3>
@@ -418,8 +440,19 @@ export default function IntercambioPage() {
 
       {/* Modal de confirmación */}
       {showConfirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <div className="w-full max-w-md bg-white dark:bg-[#1C1C1E] rounded-3xl shadow-2xl overflow-hidden">
+        <div 
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+          onClick={(e) => {
+            // Solo cerrar si se hace click en el fondo, no en el modal
+            if (e.target === e.currentTarget) {
+              setShowConfirmModal(false);
+            }
+          }}
+        >
+          <div 
+            className="w-full max-w-md bg-white dark:bg-[#1C1C1E] rounded-3xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
             <div className="px-6 pt-6 pb-4 border-b border-ios-gray5 dark:border-[#3A3A3C]">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white text-center">
@@ -537,34 +570,34 @@ function StickerList({ stickers, selected, onToggle }: StickerListProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 px-1">
       {orderedTeams.map(({ code, stickers: teamStickers }) => {
         const team = TEAMS.find(t => t.code === code);
         if (!team) return null;
 
         return (
-          <div key={code} className="space-y-1">
+          <div key={code} className="space-y-2">
             {/* Header del equipo */}
-            <div className="flex items-center gap-1.5 px-2">
-              <span className="text-base">{team.flag}</span>
+            <div className="flex items-center gap-1.5 px-1">
+              <span className="text-sm">{team.flag}</span>
               <span className="text-[10px] font-semibold text-gray-900 dark:text-white truncate">
                 {team.name}
               </span>
             </div>
             
-            {/* Lista de cromos del equipo */}
-            <div className="space-y-1">
+            {/* Grid de cromos del equipo - 3 por fila */}
+            <div className="grid grid-cols-3 gap-1.5">
               {teamStickers.map(stickerId => {
                 const isSelected = selected.has(stickerId);
                 return (
                   <button
                     key={stickerId}
                     onClick={() => onToggle(stickerId)}
-                    className={`w-full flex items-center justify-center px-3 py-2 rounded-lg 
-                               font-semibold text-xs transition-all tap-scale
+                    className={`flex items-center justify-center px-2 py-4 rounded-lg 
+                               font-bold text-xs transition-all tap-scale
                                ${isSelected 
-                                 ? 'bg-[#34C759] dark:bg-[#32D74B] text-white border-2 border-[#34C759] dark:border-[#32D74B]' 
-                                 : 'bg-white dark:bg-[#1C1C1E] text-gray-900 dark:text-white border-2 border-ios-gray5 dark:border-[#3A3A3C] hover:bg-ios-gray6 dark:hover:bg-[#2C2C2E]'
+                                 ? 'bg-[#34C759] dark:bg-[#32D74B] text-white border-2 border-[#34C759] dark:border-[#32D74B] shadow-md' 
+                                 : 'bg-white dark:bg-[#1C1C1E] text-gray-900 dark:text-white border-2 border-ios-gray5 dark:border-[#3A3A3C]'
                                }`}
                   >
                     {stickerId}

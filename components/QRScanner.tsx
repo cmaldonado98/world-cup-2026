@@ -2,7 +2,8 @@
 
 // Wraps html5-qrcode with a clean React lifecycle.
 // Only import this component via next/dynamic with ssr: false.
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Upload } from 'lucide-react';
 import type { Html5Qrcode as Html5QrcodeType } from 'html5-qrcode';
 import { decodeQR, isFiguritasQR, decodeFiguritasQRToStickers } from '@/utils/qrDecoder';
 
@@ -21,7 +22,71 @@ export interface QRScanMetadata {
 
 export default function QRScanner({ onScan, onError }: QRScannerProps) {
   const scannerRef = useRef<Html5QrcodeType | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const divId      = 'qr-reader-div';
+
+  const processQRResult = (decoded: string) => {
+    // Detectar y procesar códigos QR de Figuritas
+    if (isFiguritasQR(decoded)) {
+      try {
+        const { faltantes, repetidos } = decodeFiguritasQRToStickers(decoded);
+        console.log('[QRScanner] QR de Figuritas detectado:', { faltantes, repetidos });
+        
+        // Pasar metadata con los datos decodificados
+        onScan(decoded, {
+          source: 'figuritas',
+          figuritasData: { faltantes, repetidos },
+        });
+      } catch (error) {
+        console.error('[QRScanner] Error decodificando QR de Figuritas:', error);
+        onError?.(
+          error instanceof Error 
+            ? `Error al leer QR de Figuritas: ${error.message}` 
+            : 'Error al procesar QR de Figuritas'
+        );
+      }
+    } else {
+      // QR nativo de la app
+      onScan(decoded, { source: 'native' });
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validar que sea una imagen
+    if (!file.type.startsWith('image/')) {
+      onError?.('Por favor selecciona una imagen válida');
+      return;
+    }
+
+    setIsProcessing(true);
+    
+    try {
+      // Detener el escaneo de cámara si está activo
+      if (scannerRef.current && scannerRef.current.isScanning) {
+        await scannerRef.current.stop();
+      }
+
+      // Escanear el archivo
+      const { Html5Qrcode } = await import('html5-qrcode');
+      const html5QrCode = scannerRef.current || new Html5Qrcode(divId);
+      
+      const decoded = await html5QrCode.scanFile(file, false);
+      processQRResult(decoded);
+    } catch (error) {
+      console.error('[QRScanner] Error escaneando archivo:', error);
+      onError?.('No se pudo leer el código QR de la imagen');
+    } finally {
+      setIsProcessing(false);
+      // Limpiar el input para permitir seleccionar el mismo archivo de nuevo
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   useEffect(() => {
     let stopped = false;
@@ -46,30 +111,7 @@ export default function QRScanner({ onScan, onError }: QRScannerProps) {
       const config = { fps: 12 };
       const onSuccess = (decoded: string) => {
         stopScanner();
-        
-        // Detectar y procesar códigos QR de Figuritas
-        if (isFiguritasQR(decoded)) {
-          try {
-            const { faltantes, repetidos } = decodeFiguritasQRToStickers(decoded);
-            console.log('[QRScanner] QR de Figuritas detectado:', { faltantes, repetidos });
-            
-            // Pasar metadata con los datos decodificados
-            onScan(decoded, {
-              source: 'figuritas',
-              figuritasData: { faltantes, repetidos },
-            });
-          } catch (error) {
-            console.error('[QRScanner] Error decodificando QR de Figuritas:', error);
-            onError?.(
-              error instanceof Error 
-                ? `Error al leer QR de Figuritas: ${error.message}` 
-                : 'Error al procesar QR de Figuritas'
-            );
-          }
-        } else {
-          // QR nativo de la app
-          onScan(decoded, { source: 'native' });
-        }
+        processQRResult(decoded);
       };
 
       try {
@@ -105,8 +147,31 @@ export default function QRScanner({ onScan, onError }: QRScannerProps) {
   }, [onScan, onError]);
 
   return (
-    <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black">
-      <div id={divId} className="w-full h-full" />
+    <div className="space-y-4">
+      <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black">
+        <div id={divId} className="w-full h-full" />
+      </div>
+      
+      {/* Botón para subir foto */}
+      <div className="flex justify-center">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileUpload}
+          className="hidden"
+          id="qr-file-upload"
+        />
+        <label
+          htmlFor="qr-file-upload"
+          className={`flex items-center gap-2 bg-white dark:bg-[#1C1C1E] text-gray-900 dark:text-white 
+                     font-semibold text-sm px-6 py-3 rounded-2xl tap-scale shadow-ios-card cursor-pointer
+                     ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+        >
+          <Upload size={18} />
+          {isProcessing ? 'Procesando...' : 'Subir foto con QR'}
+        </label>
+      </div>
     </div>
   );
 }
