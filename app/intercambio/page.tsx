@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import dynamic   from 'next/dynamic';
 import { QRCodeSVG  } from 'qrcode.react';
 import { ScanLine, QrCode, ArrowLeft, Loader2, Share } from 'lucide-react';
@@ -52,6 +52,18 @@ export default function IntercambioPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+
+  // Bloquear scroll cuando el modal está abierto
+  useEffect(() => {
+    if (showConfirmModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showConfirmModal]);
 
   const handleScan = useCallback(async (text: string, metadata?: QRScanMetadata) => {
     setFetching(true);
@@ -262,17 +274,37 @@ export default function IntercambioPage() {
 
   return (
     <div className="min-h-screen bg-ios-gray6 dark:bg-black">
-      {/* ── Header ── */}
-      <header className="px-4 pt-14 pb-4 flex items-center gap-3">
-        {phase !== 'qr' && (
-          <button
-            onClick={() => { setPhase('qr'); setMatch(null); setErrMsg(''); }}
-            className="tap-scale p-1 -ml-1"
-          >
-            <ArrowLeft size={22} className="text-ios-blue" />
-          </button>
+      {/* ── Header Sticky con Contadores ── */}
+      <header className="sticky top-0 z-30 bg-ios-gray6 dark:bg-black border-b border-ios-gray5 dark:border-[#3A3A3C]">
+        <div className="px-4 pt-14 pb-3 flex items-center gap-3">
+          {phase !== 'qr' && (
+            <button
+              onClick={() => { setPhase('qr'); setMatch(null); setErrMsg(''); }}
+              className="tap-scale p-1 -ml-1"
+            >
+              <ArrowLeft size={22} className="text-ios-blue" />
+            </button>
+          )}
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Intercambio</h1>
+        </div>
+        
+        {/* Mini Dashboard de Contadores - Solo visible en fase matching */}
+        {phase === 'matching' && match && !fetching && (
+          <div className="px-4 pb-3">
+            <div className="grid grid-cols-2 gap-3">
+              {/* Contador de seleccionados que doy */}
+              <div className="bg-white dark:bg-[#1C1C1E] rounded-xl p-3 text-center shadow-sm">
+                <p className="text-xs text-ios-gray uppercase font-semibold mb-1">Yo Doy</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{selectedToGive.size}</p>
+              </div>
+              {/* Contador de seleccionados que recibo */}
+              <div className="bg-white dark:bg-[#1C1C1E] rounded-xl p-3 text-center shadow-sm">
+                <p className="text-xs text-ios-gray uppercase font-semibold mb-1">Yo Recibo</p>
+                <p className="text-2xl font-bold text-[#34C759] dark:text-[#32D74B]">{selectedToReceive.size}</p>
+              </div>
+            </div>
+          </div>
         )}
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Intercambio</h1>
       </header>
 
       {/* ── Phase: My QR ── */}
@@ -349,28 +381,6 @@ export default function IntercambioPage() {
             </div>
           ) : match ? (
             <>
-              {/* Contadores superiores */}
-              <div className="px-4 pt-2 pb-4 bg-white dark:bg-[#1C1C1E] border-b border-ios-gray5 dark:border-[#3A3A3C]">
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Contador total de lo que doy */}
-                  <div className="bg-ios-gray6 dark:bg-[#2C2C2E] rounded-xl p-3 text-center">
-                    <p className="text-xs text-ios-gray uppercase font-semibold mb-1">Total Doy</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{match.iCanGive.length}</p>
-                  </div>
-                  {/* Contador total de lo que recibo */}
-                  <div className="bg-ios-gray6 dark:bg-[#2C2C2E] rounded-xl p-3 text-center">
-                    <p className="text-xs text-ios-gray uppercase font-semibold mb-1">Total Recibo</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{match.theyGive.length}</p>
-                  </div>
-                </div>
-                {/* Contador de seleccionados */}
-                <div className="mt-3 bg-ios-blue/10 dark:bg-ios-blue/20 rounded-xl p-3 text-center">
-                  <p className="text-xs text-ios-blue font-semibold">
-                    Seleccionados: {selectedToGive.size + selectedToReceive.size}/{match.iCanGive.length + match.theyGive.length}
-                  </p>
-                </div>
-              </div>
-
               {/* Área de scroll con las dos columnas */}
               <div className="flex-1 overflow-y-auto pb-28">
                 {match.iCanGive.length === 0 && match.theyGive.length === 0 ? (
