@@ -290,17 +290,28 @@ export default function IntercambioPage() {
         
         {/* Mini Dashboard de Contadores - Solo visible en fase matching */}
         {phase === 'matching' && match && !fetching && (
-          <div className="px-4 pb-3">
+          <div className="px-4 pb-3 space-y-2">
+            {/* Fila 1: Totales disponibles */}
             <div className="grid grid-cols-2 gap-3">
-              {/* Contador de seleccionados que doy */}
-              <div className="bg-white dark:bg-[#1C1C1E] rounded-xl p-3 text-center shadow-sm">
-                <p className="text-xs text-ios-gray uppercase font-semibold mb-1">Yo Doy</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{selectedToGive.size}</p>
+              <div className="bg-white dark:bg-[#1C1C1E] rounded-xl p-2.5 text-center shadow-sm">
+                <p className="text-[10px] text-ios-gray uppercase font-semibold mb-0.5">Total Doy</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">{match.iCanGive.length}</p>
               </div>
-              {/* Contador de seleccionados que recibo */}
-              <div className="bg-white dark:bg-[#1C1C1E] rounded-xl p-3 text-center shadow-sm">
-                <p className="text-xs text-ios-gray uppercase font-semibold mb-1">Yo Recibo</p>
-                <p className="text-2xl font-bold text-[#34C759] dark:text-[#32D74B]">{selectedToReceive.size}</p>
+              <div className="bg-white dark:bg-[#1C1C1E] rounded-xl p-2.5 text-center shadow-sm">
+                <p className="text-[10px] text-ios-gray uppercase font-semibold mb-0.5">Total Recibo</p>
+                <p className="text-xl font-bold text-gray-900 dark:text-white">{match.theyGive.length}</p>
+              </div>
+            </div>
+            
+            {/* Fila 2: Seleccionados */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-ios-blue/10 dark:bg-ios-blue/20 rounded-xl p-2.5 text-center">
+                <p className="text-[10px] text-ios-blue uppercase font-semibold mb-0.5">Seleccionados</p>
+                <p className="text-xl font-bold text-ios-blue">{selectedToGive.size}</p>
+              </div>
+              <div className="bg-[#34C759]/10 dark:bg-[#32D74B]/20 rounded-xl p-2.5 text-center">
+                <p className="text-[10px] text-[#34C759] dark:text-[#32D74B] uppercase font-semibold mb-0.5">Seleccionados</p>
+                <p className="text-xl font-bold text-[#34C759] dark:text-[#32D74B]">{selectedToReceive.size}</p>
               </div>
             </div>
           </div>
@@ -394,7 +405,7 @@ export default function IntercambioPage() {
                     {/* Columna izquierda: Lo que doy */}
                     <div className="space-y-3">
                       <h3 className="text-xs font-bold text-center text-ios-gray uppercase sticky top-0 bg-ios-gray6 dark:bg-black py-2 z-10">
-                        Yo doy ({selectedToGive.size})
+                        Yo doy
                       </h3>
                       <StickerList
                         stickers={match.iCanGive}
@@ -406,7 +417,7 @@ export default function IntercambioPage() {
                     {/* Columna derecha: Lo que recibo */}
                     <div className="space-y-3">
                       <h3 className="text-xs font-bold text-center text-ios-gray uppercase sticky top-0 bg-ios-gray6 dark:bg-black py-2 z-10">
-                        Yo recibo ({selectedToReceive.size})
+                        Yo recibo
                       </h3>
                       <StickerList
                         stickers={match.theyGive}
