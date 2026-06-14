@@ -300,7 +300,7 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-200/60 dark:border-gray-700/40">
           <h2 className="text-base font-bold text-gray-900 dark:text-white">
-            {mode === 'add' ? 'Escanear para agregar' : 'Escanear para quitar'}
+            {mode === 'add' ? 'Modo foto con internet (agregar)' : 'Modo foto con internet (quitar)'}
           </h2>
           <button
             onClick={onClose}
@@ -346,6 +346,10 @@ export default function ScanModal({ mode, onClose }: ScanModalProps) {
                 {mode === 'add'
                   ? 'Se agregarán los cromos detectados a tu álbum'
                   : 'Se quitará 1 repetida por cada cromo detectado'}
+              </p>
+
+              <p className="mt-1 text-center text-[11px] text-ios-gray">
+                Este modo usa OCR por internet, puede tardar más si la conexión es inestable.
               </p>
             </>
           )}
