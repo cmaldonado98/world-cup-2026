@@ -24,7 +24,11 @@ export default function QRScanner({ onScan, onError }: QRScannerProps) {
   const scannerRef = useRef<Html5QrcodeType | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const lastDecodedRef = useRef<string | null>(null);
+  const stableCountRef = useRef(0);
+  const confirmedRef = useRef(false);
   const divId      = 'qr-reader-div';
+  const REQUIRED_STABLE_FRAMES = 2;
 
   const processQRResult = (decoded: string) => {
     // Detectar y procesar códigos QR de Figuritas
@@ -110,6 +114,21 @@ export default function QRScanner({ onScan, onError }: QRScannerProps) {
       
       const config = { fps: 12 };
       const onSuccess = (decoded: string) => {
+        if (confirmedRef.current) return;
+
+        if (lastDecodedRef.current === decoded) {
+          const nextStable = stableCountRef.current + 1;
+          stableCountRef.current = nextStable;
+          if (nextStable < REQUIRED_STABLE_FRAMES) {
+            return;
+          }
+        } else {
+          lastDecodedRef.current = decoded;
+          stableCountRef.current = 1;
+          return;
+        }
+
+        confirmedRef.current = true;
         stopScanner();
         processQRResult(decoded);
       };
@@ -146,8 +165,23 @@ export default function QRScanner({ onScan, onError }: QRScannerProps) {
     };
   }, [onScan, onError]);
 
+  useEffect(() => {
+    if (isProcessing) {
+      lastDecodedRef.current = null;
+      stableCountRef.current = 0;
+      confirmedRef.current = false;
+    }
+  }, [isProcessing]);
+
   return (
     <div className="space-y-4">
+      <div className="rounded-2xl bg-[#E8F2FF] dark:bg-[#0A223D] px-4 py-3">
+        <p className="text-xs font-semibold text-[#0A4A9E] dark:text-[#86B7FF]">Modo QR instantaneo</p>
+        <p className="text-xs text-[#0A4A9E] dark:text-[#86B7FF] mt-1">
+          Escanea un QR directo con camara. Es rapido y funciona sin internet.
+        </p>
+      </div>
+
       <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black">
         <div id={divId} className="w-full h-full" />
       </div>
@@ -169,9 +203,13 @@ export default function QRScanner({ onScan, onError }: QRScannerProps) {
                      ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
           <Upload size={18} />
-          {isProcessing ? 'Procesando...' : 'Subir foto con QR'}
+          {isProcessing ? 'Procesando...' : 'Modo foto (puede tardar por internet)'}
         </label>
       </div>
+
+      <p className="text-xs text-ios-gray text-center px-3">
+        Si estas en exterior y la señal es inestable, primero intenta el modo QR instantaneo.
+      </p>
     </div>
   );
 }

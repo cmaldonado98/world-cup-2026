@@ -1,13 +1,14 @@
 'use client';
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useMemo } from 'react';
 import dynamic   from 'next/dynamic';
 import { QRCodeSVG  } from 'qrcode.react';
-import { ScanLine, QrCode, ArrowLeft, Loader2, Share } from 'lucide-react';
+import { ScanLine, ArrowLeft, Loader2, Share, RefreshCw } from 'lucide-react';
 import { useAlbum   } from '@/contexts/AlbumContext';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import type { CardMap } from '@/contexts/AlbumContext';
 import { getAllStickers, TEAMS, GROUPS } from '@/lib/data/teams';
+import { encodeFiguritasQRFromStickers } from '@/utils/qrDecoder';
 import type { QRScanMetadata } from '@/components/QRScanner';
 
 // Load scanner only on the client – html5-qrcode touches window/navigator
@@ -50,8 +51,33 @@ export default function IntercambioPage() {
   const [selectedToGive, setSelectedToGive] = useState<Set<string>>(new Set());
   const [selectedToReceive, setSelectedToReceive] = useState<Set<string>>(new Set());
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [qrVariant, setQrVariant] = useState<'native' | 'figuritas'>('native');
+  const [isFlippingQr, setIsFlippingQr] = useState(false);
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+
+  const { nativeShareQr, figuritasShareQr } = useMemo(() => {
+    if (!user) {
+      return { nativeShareQr: '', figuritasShareQr: '' };
+    }
+
+    const nativeValue = `${appUrl}/share/${user.id}`;
+    const all = getAllStickers();
+    const faltantes = all.filter((id) => (cardMap[id] ?? 0) === 0);
+    const repetidos = all.filter((id) => (cardMap[id] ?? 0) > 1);
+    const figuritasValue = encodeFiguritasQRFromStickers(faltantes, repetidos);
+
+    return {
+      nativeShareQr: nativeValue,
+      figuritasShareQr: figuritasValue,
+    };
+  }, [appUrl, user, cardMap]);
+
+  const handleFlipQr = useCallback(() => {
+    setIsFlippingQr(true);
+    setQrVariant((prev) => (prev === 'native' ? 'figuritas' : 'native'));
+    window.setTimeout(() => setIsFlippingQr(false), 520);
+  }, []);
 
   // Bloquear scroll cuando el modal está abierto
   useEffect(() => {
@@ -321,17 +347,47 @@ export default function IntercambioPage() {
       {/* ── Phase: My QR ── */}
       {phase === 'qr' && user && (
         <div className="flex flex-col items-center gap-6 px-4 py-4">
-          <div className="bg-white dark:bg-[#1C1C1E] rounded-3xl p-6 shadow-ios-card">
-            <QRCodeSVG
-              value={`${appUrl}/share/${user.id}`}
-              size={220}
-              level="M"
-              includeMargin={false}
-            />
+          <div className="w-full max-w-[280px] rounded-2xl bg-[#E8F2FF] dark:bg-[#0A223D] px-4 py-3">
+            <p className="text-xs font-semibold text-[#0A4A9E] dark:text-[#86B7FF]">Modo QR instantaneo</p>
+            <p className="text-xs text-[#0A4A9E] dark:text-[#86B7FF] mt-1">
+              Escaneo rapido y directo por camara, ideal para intercambio en el momento.
+            </p>
+          </div>
+
+          <div className="qr-flip-scene">
+            <div className={`qr-flip-card ${isFlippingQr ? 'is-flipping' : ''} ${qrVariant === 'figuritas' ? 'show-back' : ''}`}>
+              <div className="qr-flip-face bg-white dark:bg-[#1C1C1E] rounded-3xl p-6 shadow-ios-card">
+                <QRCodeSVG
+                  value={nativeShareQr}
+                  size={220}
+                  level="M"
+                  includeMargin={false}
+                />
+              </div>
+              <div className="qr-flip-face qr-flip-face-back bg-white dark:bg-[#1C1C1E] rounded-3xl p-6 shadow-ios-card">
+                <QRCodeSVG
+                  value={figuritasShareQr}
+                  size={220}
+                  level="M"
+                  includeMargin={false}
+                />
+              </div>
+            </div>
           </div>
           <p className="text-xs text-ios-gray text-center px-4">
-            Comparte este QR para que un amigo escanee tu álbum y vean qué pueden intercambiar
+            {qrVariant === 'native'
+              ? 'QR nativo: para escanear directo entre usuarios de esta app.'
+              : 'QR estilo Figuritas: compatible para que te escaneen desde esa app.'}
           </p>
+
+          <button
+            onClick={handleFlipQr}
+            className="flex items-center gap-2 bg-white dark:bg-[#1C1C1E] text-gray-900 dark:text-white font-semibold
+                       text-sm px-6 py-3 rounded-2xl tap-scale shadow-ios-card"
+          >
+            <RefreshCw size={16} className={isFlippingQr ? 'animate-spin' : ''} />
+            {qrVariant === 'native' ? 'Dar vuelta: QR estilo Figuritas' : 'Volver a QR nativo'}
+          </button>
 
           <button
             onClick={() => setPhase('scanning')}
@@ -339,8 +395,12 @@ export default function IntercambioPage() {
                        text-sm px-8 py-3.5 rounded-2xl tap-scale shadow-ios-card min-w-[280px] justify-center"
           >
             <ScanLine size={18} />
-            Escanear álbum de un amigo
+            Escanear QR de un amigo
           </button>
+
+          <p className="text-xs text-ios-gray text-center max-w-[290px] -mt-3">
+            El escaneo QR es instantaneo. El modo foto masiva puede demorar cuando la red esta lenta.
+          </p>
 
           {/* Share buttons */}
           <div className="flex gap-3 w-full max-w-[280px]">

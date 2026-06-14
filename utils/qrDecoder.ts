@@ -66,6 +66,19 @@ function getIndexToCodeMap(): Map<number, string> {
   return indexToCodeCache;
 }
 
+let codeToIndexCache: Map<string, number> | null = null;
+
+function getCodeToIndexMap(): Map<string, number> {
+  if (!codeToIndexCache) {
+    const map = new Map<string, number>();
+    getAllStickers().forEach((code, index) => {
+      map.set(code, index);
+    });
+    codeToIndexCache = map;
+  }
+  return codeToIndexCache;
+}
+
 /**
  * Convierte un índice numérico de Figuritas a nuestro código de cromo.
  * @param index Índice numérico (0 a N)
@@ -229,4 +242,45 @@ export function decodeFiguritasQRToStickers(qrText: string): FiguritasStickers {
     faltantes: indicesToStickerCodes(faltantes),
     repetidos: indicesToStickerCodes(repetidos),
   };
+}
+
+function encodeBitmask(indices: number[]): string {
+  const stickerCount = getAllStickers().length;
+  const byteLength = Math.max(1, Math.ceil(stickerCount / 8));
+  const bytes = new Uint8Array(byteLength);
+
+  for (const index of indices) {
+    if (index < 0 || index >= stickerCount) continue;
+    const byteIndex = Math.floor(index / 8);
+    const bitIndex = index % 8;
+    bytes[byteIndex] |= 1 << bitIndex;
+  }
+
+  const compressed = pako.gzip(bytes);
+  let binary = '';
+  for (let i = 0; i < compressed.length; i++) {
+    binary += String.fromCharCode(compressed[i]);
+  }
+  return btoa(binary);
+}
+
+/**
+ * Genera un QR en formato Figuritas usando listas de códigos de cromos.
+ * Esto permite compartir compatibilidad con apps que esperan el prefijo "⋋~".
+ */
+export function encodeFiguritasQRFromStickers(faltantes: string[], repetidos: string[]): string {
+  const codeToIndex = getCodeToIndexMap();
+
+  const faltantesIdx = Array.from(new Set(faltantes))
+    .map((id) => codeToIndex.get(id))
+    .filter((v): v is number => typeof v === 'number');
+
+  const repetidosIdx = Array.from(new Set(repetidos))
+    .map((id) => codeToIndex.get(id))
+    .filter((v): v is number => typeof v === 'number');
+
+  const faltantesBlock = encodeBitmask(faltantesIdx);
+  const repetidosBlock = encodeBitmask(repetidosIdx);
+
+  return `${FIGURITAS_PREFIX}${faltantesBlock}${SEPARATOR}${repetidosBlock}`;
 }
